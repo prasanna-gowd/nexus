@@ -9,15 +9,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #0a0d14;
-      --bg-card: #121824;
-      --bg-card-hover: #192233;
-      --border: #212c3f;
-      --text-main: #f0f4fc;
-      --text-muted: #8b9bb4;
+      --bg-dark: #090d16;
+      --bg-card: #111726;
+      --bg-card-hover: #172033;
+      --border: #1e293b;
+      --border-focus: #4f46e5;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
       --primary: #4f46e5;
       --primary-light: #6366f1;
-      --primary-glow: rgba(99, 102, 241, 0.25);
+      --primary-glow: rgba(99, 102, 241, 0.3);
       --accent: #06b6d4;
       --success: #10b981;
       --warning: #f59e0b;
@@ -34,10 +35,10 @@
       flex-direction: column;
     }
 
-    /* Navbar */
+    /* Header */
     header {
-      background: rgba(18, 24, 36, 0.85);
-      backdrop-filter: blur(12px);
+      background: rgba(17, 23, 38, 0.9);
+      backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
       padding: 0.85rem 2rem;
       display: flex;
@@ -56,38 +57,46 @@
       font-size: 1.25rem;
       letter-spacing: -0.02em;
     }
-    .brand-badge {
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
       background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: white;
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 700;
+      font-weight: 900;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px var(--primary-glow);
     }
 
     .nav-tabs {
       display: flex;
-      gap: 0.5rem;
-      background: #0d121c;
-      padding: 0.25rem;
-      border-radius: 8px;
+      gap: 0.35rem;
+      background: #090d16;
+      padding: 0.3rem;
+      border-radius: 10px;
       border: 1px solid var(--border);
     }
     .tab-btn {
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
+      padding: 0.5rem 1.1rem;
+      border-radius: 8px;
       font-weight: 600;
       font-size: 0.85rem;
       cursor: pointer;
       transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
     }
     .tab-btn.active {
       background: var(--primary);
       color: white;
-      box-shadow: 0 0 12px var(--primary-glow);
+      box-shadow: 0 2px 10px var(--primary-glow);
     }
 
     .health-pill {
@@ -96,8 +105,8 @@
       gap: 0.5rem;
       font-size: 0.8rem;
       color: var(--text-muted);
-      background: #0f1523;
-      padding: 0.35rem 0.75rem;
+      background: #090d16;
+      padding: 0.4rem 0.85rem;
       border-radius: 20px;
       border: 1px solid var(--border);
     }
@@ -112,44 +121,46 @@
     /* Main Container */
     main {
       flex: 1;
-      max-width: 1400px;
+      max-width: 1440px;
       width: 100%;
       margin: 0 auto;
-      padding: 2rem;
+      padding: 1.75rem 2rem;
     }
 
     .tab-content { display: none; }
-    .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: grid; animation: fadeIn 0.3s ease; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Grid Layouts */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1.6fr;
+    .grid-roadmap {
+      grid-template-columns: 440px 1fr;
       gap: 1.5rem;
     }
     .grid-tutor {
-      display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 1.5rem;
-      height: calc(100vh - 160px);
+      height: calc(100vh - 140px);
+    }
+    .grid-market {
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
     }
 
-    /* Card */
+    /* Cards */
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 1.5rem;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
     .card-title {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       margin-bottom: 1rem;
       display: flex;
@@ -157,19 +168,43 @@
       justify-content: space-between;
     }
 
-    /* Form Inputs */
-    label {
+    /* Role Quick Selector */
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .role-btn {
+      background: #090d16;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
       font-size: 0.8rem;
       font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .role-btn:hover {
+      border-color: var(--primary-light);
+      background: var(--bg-card-hover);
+    }
+
+    /* Form Inputs */
+    label {
+      font-size: 0.75rem;
+      font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 0.4rem;
       display: block;
     }
-    input, select, textarea {
+    input, textarea {
       width: 100%;
-      background: #0a0e17;
+      background: #090d16;
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 0.75rem 1rem;
@@ -179,7 +214,7 @@
       outline: none;
       transition: border 0.2s;
     }
-    input:focus, select:focus, textarea:focus {
+    input:focus, textarea:focus {
       border-color: var(--primary-light);
       box-shadow: 0 0 0 2px var(--primary-glow);
     }
@@ -191,7 +226,7 @@
       border-radius: 8px;
       padding: 0.75rem 1.25rem;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -210,7 +245,7 @@
     }
     .btn-secondary:hover { background: #26334d; }
 
-    /* Tags / Chips */
+    /* Chips */
     .chips-container {
       display: flex;
       flex-wrap: wrap;
@@ -221,15 +256,15 @@
     .chip {
       background: #1e293b;
       border: 1px solid #334155;
-      padding: 0.35rem 0.75rem;
+      padding: 0.3rem 0.75rem;
       border-radius: 20px;
       font-size: 0.8rem;
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 0.4rem;
     }
     .chip.verified { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
-    .chip.missing { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; }
     .chip-remove { cursor: pointer; color: var(--text-muted); }
     .chip-remove:hover { color: var(--danger); }
 
@@ -243,10 +278,10 @@
       padding-right: 0.5rem;
     }
     .step-item {
-      background: #0d121c;
+      background: #090d16;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
       display: flex;
       align-items: center;
       gap: 1rem;
@@ -255,26 +290,45 @@
     .step-item.active {
       border-color: var(--primary-light);
       background: rgba(99, 102, 241, 0.08);
+      box-shadow: 0 0 14px rgba(99, 102, 241, 0.15);
     }
     .step-num {
-      background: #1a2336;
+      background: #172033;
       width: 32px;
       height: 32px;
-      border-radius: 50%;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
       font-size: 0.85rem;
       color: var(--text-muted);
+      border: 1px solid var(--border);
     }
     .step-item.active .step-num {
       background: var(--primary);
       color: white;
+      border-color: var(--primary-light);
     }
     .step-info { flex: 1; }
     .step-title { font-weight: 700; font-size: 0.95rem; }
     .step-prereqs { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    /* DAG Canvas Container */
+    #dag-canvas-container {
+      width: 100%;
+      height: 220px;
+      background: #070a12;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    #dag-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
 
     /* Chat Interface */
     .chat-box {
@@ -282,9 +336,17 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      background: #0d121c;
-      border-radius: 8px;
+      background: #090d16;
+      border-radius: 12px;
       border: 1px solid var(--border);
+    }
+    .chat-header {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .chat-messages {
       flex: 1;
@@ -297,13 +359,13 @@
     .message {
       max-width: 85%;
       padding: 1rem 1.25rem;
-      border-radius: 12px;
-      line-height: 1.5;
+      border-radius: 14px;
+      line-height: 1.55;
       font-size: 0.92rem;
     }
     .message.agent {
       align-self: flex-start;
-      background: #172033;
+      background: #131c2e;
       border: 1px solid var(--border);
       border-top-left-radius: 2px;
     }
@@ -312,34 +374,35 @@
       background: var(--primary);
       color: white;
       border-top-right-radius: 2px;
+      box-shadow: 0 2px 10px var(--primary-glow);
     }
     .chat-input-area {
       padding: 1rem;
       border-top: 1px solid var(--border);
       display: flex;
       gap: 0.75rem;
-      background: #0f1523;
+      background: #0d1322;
     }
 
     /* Profiler Dial */
     .gauge-card {
       text-align: center;
       padding: 1.25rem;
-      background: #0d121c;
+      background: #090d16;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
     }
     .gauge-val {
-      font-size: 2.2rem;
+      font-size: 2.4rem;
       font-weight: 800;
       font-family: 'JetBrains Mono', monospace;
       color: var(--accent);
-      margin: 0.5rem 0;
+      margin: 0.35rem 0;
     }
     .gauge-bar {
       height: 8px;
-      background: #1a2336;
+      background: #172033;
       border-radius: 4px;
       overflow: hidden;
       margin: 0.5rem 0;
@@ -355,189 +418,232 @@
       color: var(--text-muted);
       display: flex;
       justify-content: space-between;
+      font-weight: 600;
     }
 
-    /* Code & Markdown snippet styling */
-    pre, code {
+    code {
       font-family: 'JetBrains Mono', monospace;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: #38bdf8;
+      font-size: 0.85em;
     }
   </style>
 </head>
 <body>
 
+  <!-- Top App Navigation -->
   <header>
     <div class="brand">
-      <span>NEXUS</span>
-      <span class="brand-badge">Autonomous Ecosystem</span>
+      <div class="brand-icon">N</div>
+      <div>
+        <div style="font-weight: 800; font-size: 1.15rem; line-height: 1.2;">NEXUS</div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Autonomous Learning Platform</div>
+      </div>
     </div>
 
     <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('roadmap')">🗺️ Skill-Gap Roadmap</button>
+      <button class="tab-btn active" onclick="switchTab('roadmap')">🗺️ Skill Roadmap</button>
       <button class="tab-btn" onclick="switchTab('tutor')">🎓 Socratic Tutoring</button>
       <button class="tab-btn" onclick="switchTab('market')">📊 Market Intelligence</button>
     </div>
 
     <div class="health-pill">
       <span class="status-dot" id="health-dot"></span>
-      <span id="health-text">Checking API...</span>
+      <span id="health-text">API Live (DuckDB)</span>
     </div>
   </header>
 
   <main>
     <!-- TAB 1: SKILL GAP & ROADMAP -->
-    <div id="tab-roadmap" class="tab-content active">
-      <div class="grid-2">
-        <div class="card">
-          <h2 class="card-title">Target Role & Verified Skills</h2>
-          <div style="margin-bottom: 1rem;">
-            <label>Target Career Goal</label>
-            <input type="text" id="target-role-input" value="Machine Learning Engineer" placeholder="e.g. Full Stack Developer">
+    <div id="tab-roadmap" class="tab-content active grid-roadmap">
+      <!-- Left Panel -->
+      <div class="card">
+        <h2 class="card-title">Target Role & Current Skills</h2>
+
+        <label>Quick Select Role Target</label>
+        <div class="role-grid">
+          <button class="role-btn" onclick="selectRole('Machine Learning Engineer')">🤖 ML Engineer</button>
+          <button class="role-btn" onclick="selectRole('Full Stack Developer')">💻 Full Stack Dev</button>
+          <button class="role-btn" onclick="selectRole('DevOps Engineer')">☁️ DevOps Engineer</button>
+          <button class="role-btn" onclick="selectRole('Backend Developer')">⚙️ Backend Dev</button>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label>Target Career Role</label>
+          <input type="text" id="target-role-input" value="Machine Learning Engineer" placeholder="e.g. Data Scientist">
+        </div>
+
+        <div>
+          <label>Verified Skills You Already Master</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="skill-input" placeholder="Type a skill..." onkeydown="if(event.key==='Enter') addSkill()">
+            <button class="btn btn-secondary" onclick="addSkill()">Add</button>
           </div>
+          <div class="chips-container" id="verified-skills-chips"></div>
+        </div>
 
-          <div>
-            <label>Add Verified Skills (Skills you already know)</label>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="text" id="skill-input" placeholder="e.g. Python, Git" onkeydown="if(event.key==='Enter') addSkill()">
-              <button class="btn btn-secondary" onclick="addSkill()">Add</button>
-            </div>
-            <div class="chips-container" id="verified-skills-chips">
-              <span class="chip verified">Python <span class="chip-remove" onclick="removeSkill(this, 'Python')">✕</span></span>
-            </div>
+        <button class="btn" style="width: 100%; margin-top: 0.5rem;" onclick="generateRoadmap()">
+          ⚡ Calculate Prerequisite Learning Roadmap
+        </button>
+
+        <div style="margin-top: 1.5rem; background: #090d16; padding: 1.1rem; border-radius: 10px; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Role Readiness Match</span>
+            <span id="match-pct-text" style="font-size: 1.25rem; font-weight: 800; color: var(--accent);">0%</span>
           </div>
+          <div class="gauge-bar">
+            <div id="match-bar-fill" class="gauge-fill" style="width: 0%;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;">
+            <span id="matched-count-label">0 Matched Skills</span>
+            <span id="required-count-label">0 Required Skills</span>
+          </div>
+        </div>
+      </div>
 
-          <button class="btn" style="width: 100%; margin-top: 1rem;" onclick="generateRoadmap()">
-            ⚡ Generate Personalized Roadmap
-          </button>
+      <!-- Right Panel: Prerequisite DAG Visualizer & Trajectory -->
+      <div class="card">
+        <div class="card-title">
+          <span>Prerequisite Dependency Graph (DAG)</span>
+          <span id="trajectory-count" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">0 steps</span>
+        </div>
 
-          <div style="margin-top: 2rem; background: #0d121c; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="font-size: 0.85rem; font-weight: 700;">Role Readiness Match</span>
-              <span id="match-pct-text" style="font-size: 1.1rem; font-weight: 800; color: var(--accent);">0%</span>
-            </div>
-            <div class="gauge-bar">
-              <div id="match-bar-fill" class="gauge-fill" style="width: 0%;"></div>
-            </div>
+        <!-- Interactive Canvas DAG Visualization -->
+        <div id="dag-canvas-container">
+          <canvas id="dag-canvas"></canvas>
+        </div>
+
+        <div class="step-list" id="step-list">
+          <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+            Click "Calculate Prerequisite Learning Roadmap" to schedule your ordered learning sequence.
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">
-            <span>Topological Prerequisite DAG Trajectory</span>
-            <span id="trajectory-count" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">0 steps</span>
-          </div>
-          <div class="step-list" id="step-list">
-            <div style="color: var(--text-muted); text-align: center; padding: 3rem 1rem;">
-              Click "Generate Personalized Roadmap" to calculate your prerequisite learning path.
-            </div>
-          </div>
-          <button class="btn" id="start-tutor-btn" style="margin-top: 1rem; display: none;" onclick="startTutoringFromRoadmap()">
-            🚀 Start Socratic Tutoring with First Skill
-          </button>
-        </div>
+        <button class="btn" id="start-tutor-btn" style="margin-top: 1rem; display: none; width: 100%;" onclick="startTutoringFromRoadmap()">
+          🚀 Start Socratic Tutoring with First Prerequisite
+        </button>
       </div>
     </div>
 
-    <!-- TAB 2: MULTI-AGENT SOCRATIC TUTORING -->
-    <div id="tab-tutor" class="tab-content">
-      <div class="grid-tutor">
-        <!-- Sidebar: Learner Cognitive Profile -->
-        <div class="card" style="height: 100%; overflow-y: auto;">
-          <h2 class="card-title">Cognitive Profiler</h2>
+    <!-- TAB 2: INTERACTIVE SOCRATIC TUTORING -->
+    <div id="tab-tutor" class="tab-content grid-tutor">
+      <!-- Left Panel: Cognitive Profile -->
+      <div class="card" style="overflow-y: auto;">
+        <h2 class="card-title">Cognitive Profiler</h2>
 
-          <div class="gauge-card">
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Latest Mastery Confidence</div>
-            <div class="gauge-val" id="profiler-score">0.00</div>
-            <div class="gauge-bar">
-              <div class="gauge-fill" id="profiler-fill" style="width: 0%;"></div>
-            </div>
-            <div class="threshold-marker">
-              <span>0% Baseline</span>
-              <span style="color: var(--success); font-weight: 700;">80% Threshold</span>
-              <span>100%</span>
-            </div>
+        <div class="gauge-card">
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Knowledge Tracing Confidence</div>
+          <div class="gauge-val" id="profiler-score">0.00</div>
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="profiler-fill" style="width: 0%;"></div>
           </div>
-
-          <div style="margin-bottom: 1.25rem;">
-            <label>Active Skill Objective</label>
-            <div id="active-skill-badge" style="font-weight: 800; font-size: 1.1rem; color: var(--accent); padding: 0.5rem; background: #0d121c; border-radius: 6px; border: 1px solid var(--border);">
-              None selected
-            </div>
+          <div class="threshold-marker">
+            <span>0.0 Baseline</span>
+            <span style="color: var(--success); font-weight: 700;">0.80 Mastery Goal</span>
+            <span>1.0 Full</span>
           </div>
-
-          <div style="margin-bottom: 1.25rem;">
-            <label>Real-World Context Snippet</label>
-            <div id="job-context-box" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; background: #0d121c; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); max-height: 120px; overflow-y: auto;">
-              Context will be retrieved upon first question.
-            </div>
-          </div>
-
-          <div style="flex: 1;">
-            <label>Remaining Trajectory</label>
-            <div id="tutor-remaining-chips" class="chips-container"></div>
-          </div>
-
-          <button class="btn btn-secondary" style="width: 100%; margin-top: 1rem; font-size: 0.8rem;" onclick="resetTutorSession()">
-            🔄 Reset Tutoring Session
-          </button>
         </div>
 
-        <!-- Right: Socratic Chat Box -->
-        <div class="chat-box">
-          <div class="chat-messages" id="chat-messages">
-            <div class="message agent">
-              👋 <strong>Welcome to NEXUS Socratic Tutoring!</strong><br><br>
-              I am your Socrates Agent. I will ground our discussions in genuine job market requirements and ask focused technical questions to build your skills step-by-step.<br><br>
-              <em>Select a role in the Roadmap tab or click below to begin.</em>
+        <div style="margin-bottom: 1.25rem;">
+          <label>Current Learning Target</label>
+          <div id="active-skill-badge" style="font-weight: 800; font-size: 1.15rem; color: var(--accent); padding: 0.6rem 0.85rem; background: #090d16; border-radius: 8px; border: 1px solid var(--border);">
+            None active
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label>Production Job Context</label>
+          <div id="job-context-box" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45; background: #090d16; padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border); max-height: 130px; overflow-y: auto; font-style: italic;">
+            Context will be retrieved upon first question.
+          </div>
+        </div>
+
+        <div style="flex: 1;">
+          <label>Remaining Trajectory Queue</label>
+          <div id="tutor-remaining-chips" class="chips-container"></div>
+        </div>
+
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 1rem; font-size: 0.8rem;" onclick="resetTutorSession()">
+          🔄 Reset Tutoring Session
+        </button>
+      </div>
+
+      <!-- Right Panel: Socratic Chat Box -->
+      <div class="chat-box">
+        <div class="chat-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #818cf8; font-size: 0.9rem;">
+              S
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.92rem;">Socrates Agent</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Grounded Socratic Inquiry • Real Job Requirements</div>
             </div>
           </div>
+          <span style="font-size: 0.75rem; color: var(--success); background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: 600;">
+            ● Ready
+          </span>
+        </div>
 
-          <div class="chat-input-area">
-            <textarea id="chat-input" rows="2" placeholder="Explain your architectural reasoning, code solution, or trade-offs..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendChatMessage();}"></textarea>
-            <button class="btn" id="send-btn" onclick="sendChatMessage()">Send</button>
+        <div class="chat-messages" id="chat-messages">
+          <div class="message agent">
+            👋 <strong>Welcome to NEXUS Socratic Tutoring!</strong><br><br>
+            I am your Socrates Agent. I practice true Socratic pedagogy: I guide your technical reasoning by asking focused architectural questions grounded in real industry job requirements.<br><br>
+            <em>Select a role in the Skill Roadmap tab or type your question below to begin!</em>
           </div>
+        </div>
+
+        <div class="chat-input-area">
+          <input type="text" id="chat-input" placeholder="Explain your architectural reasoning, code solution, or trade-offs..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <button class="btn" id="send-btn" onclick="sendChatMessage()">Send</button>
         </div>
       </div>
     </div>
 
     <!-- TAB 3: MARKET INTELLIGENCE -->
-    <div id="tab-market" class="tab-content">
-      <div class="grid-2">
-        <div class="card">
-          <h2 class="card-title">Top In-Demand Technical Skills</h2>
-          <div style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem;">
-            Extracted from real tech job postings and normalized against ESCO standards.
-          </div>
-          <div id="market-skills-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 520px; overflow-y: auto;">
-            Loading market data...
-          </div>
+    <div id="tab-market" class="tab-content grid-market">
+      <div class="card">
+        <h2 class="card-title">
+          <span>In-Demand Technical Skills Ranking</span>
+          <span style="font-size: 0.75rem; color: var(--primary-light); background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 0.2rem 0.6rem; border-radius: 12px;">207 Job Postings</span>
+        </h2>
+        <div style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+          Extracted directly from Remotive & Hacker News hiring threads, normalized against ESCO standards.
+        </div>
+        <div id="market-skills-list" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 520px; overflow-y: auto;">
+          Loading market intelligence...
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Skill Velocity & Market Signals</h2>
+        <div id="velocity-box" style="background: #090d16; padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+          Loading velocity metrics...
         </div>
 
-        <div class="card">
-          <h2 class="card-title">Skill Velocity & Market Signals</h2>
-          <div id="velocity-box" style="background: #0d121c; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1.5rem;">
-            Loading velocity trends...
-          </div>
-
-          <h2 class="card-title" style="margin-top: 1rem;">Explore Technology Co-occurrence</h2>
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-            <input type="text" id="cooccur-input" placeholder="Enter skill (e.g. Python, Docker, React)">
-            <button class="btn btn-secondary" onclick="lookupCooccurrence()">Explore</button>
-          </div>
-          <div id="cooccur-results" class="chips-container">
-            <span style="color: var(--text-muted); font-size: 0.85rem;">Enter a skill to discover complementary tools frequently required together.</span>
-          </div>
+        <h2 class="card-title" style="margin-top: 1rem;">Explore Technology Co-Occurrence</h2>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+          Discover complementary frameworks and tools commonly required together in industry.
+        </p>
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <input type="text" id="cooccur-input" placeholder="Enter skill (e.g. Python, Docker, React)">
+          <button class="btn btn-secondary" onclick="lookupCooccurrence()">Explore</button>
+        </div>
+        <div id="cooccur-results" class="chips-container">
+          <span style="color: var(--text-muted); font-size: 0.85rem;">Enter a technology to view correlated tools.</span>
         </div>
       </div>
     </div>
   </main>
 
   <script>
-    const API_BASE = '';
     let verifiedSkills = ['Python'];
     let currentTrajectory = [];
     let studentId = 'STU-' + Math.floor(1000 + Math.random() * 9000);
 
-    // Tab Navigation
+    // Switch Tabs
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -545,6 +651,12 @@
       document.getElementById('tab-' + tabId).classList.add('active');
 
       if (tabId === 'market') loadMarketTrends();
+      if (tabId === 'roadmap') drawDAG();
+    }
+
+    function selectRole(role) {
+      document.getElementById('target-role-input').value = role;
+      generateRoadmap();
     }
 
     // Health check
@@ -564,7 +676,7 @@
       }
     }
 
-    // Verified skills chips management
+    // Verified skills chips
     function addSkill() {
       const input = document.getElementById('skill-input');
       const val = input.value.trim();
@@ -576,7 +688,7 @@
       input.value = '';
     }
 
-    function removeSkill(elem, skill) {
+    function removeSkill(skill) {
       verifiedSkills = verifiedSkills.filter(s => s.toLowerCase() !== skill.toLowerCase());
       renderVerifiedChips();
     }
@@ -584,11 +696,11 @@
     function renderVerifiedChips() {
       const container = document.getElementById('verified-skills-chips');
       container.innerHTML = verifiedSkills.map(s => `
-        <span class="chip verified">${s} <span class="chip-remove" onclick="removeSkill(this, '${s}')">✕</span></span>
+        <span class="chip verified">${s} <span class="chip-remove" onclick="removeSkill('${s}')">✕</span></span>
       `).join('');
     }
 
-    // Generate Roadmap (Phase 4)
+    // Generate Roadmap
     async function generateRoadmap() {
       const role = document.getElementById('target-role-input').value.trim() || 'Machine Learning Engineer';
       const stepList = document.getElementById('step-list');
@@ -602,16 +714,19 @@
         });
         const data = await res.json();
 
-        // Render Match
+        // Update Match Percentage
         document.getElementById('match-pct-text').textContent = data.match_percentage + '%';
         document.getElementById('match-bar-fill').style.width = data.match_percentage + '%';
+        document.getElementById('matched-count-label').textContent = `${data.matched_skills.length} Matched Skills`;
+        document.getElementById('required-count-label').textContent = `${data.total_required} Total Required`;
 
         currentTrajectory = data.ordered_trajectory;
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
 
         if (currentTrajectory.length === 0) {
-          stepList.innerHTML = '<div style="color: #34d399; text-align: center; padding: 2rem;">🎉 All required skills for this role are already verified!</div>';
+          stepList.innerHTML = '<div style="color: #34d399; text-align: center; padding: 2rem;">🎉 Outstanding! All required skills for this role are already verified!</div>';
           document.getElementById('start-tutor-btn').style.display = 'none';
+          drawDAG([]);
           return;
         }
 
@@ -619,20 +734,100 @@
           <div class="step-item ${idx === 0 ? 'active' : ''}">
             <div class="step-num">${step.step}</div>
             <div class="step-info">
-              <div class="step-title">${step.skill_name} ${step.is_target_skill ? '<span style="font-size: 0.7rem; color: #6366f1; border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Target Role</span>' : '<span style="font-size: 0.7rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Prerequisite</span>'}</div>
-              <div class="step-prereqs">${step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'No prerequisites'}</div>
+              <div class="step-title">
+                ${step.skill_name} 
+                ${step.is_target_skill ? '<span style="font-size: 0.7rem; color: #818cf8; border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Target Role</span>' : '<span style="font-size: 0.7rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Prerequisite</span>'}
+              </div>
+              <div class="step-prereqs">${step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill'}</div>
             </div>
           </div>
         `).join('');
 
         document.getElementById('start-tutor-btn').style.display = 'inline-flex';
+        drawDAG(currentTrajectory);
       } catch (e) {
         stepList.innerHTML = '<div style="color: #ef4444; padding: 1rem;">Failed to calculate roadmap: ' + e.message + '</div>';
       }
     }
 
+    // HTML5 Canvas DAG Visualization
+    function drawDAG(steps = currentTrajectory) {
+      const canvas = document.getElementById('dag-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const container = document.getElementById('dag-canvas-container');
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!steps || steps.length === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '13px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No DAG trajectory active. Click Calculate Roadmap.', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      const displaySteps = steps.slice(0, 6);
+      const n = displaySteps.length;
+      const padding = 60;
+      const availWidth = canvas.width - (padding * 2);
+      const stepX = availWidth / Math.max(1, n - 1);
+      const centerY = canvas.height / 2;
+
+      // Draw connecting edges
+      for (let i = 0; i < n - 1; i++) {
+        const x1 = padding + (i * stepX);
+        const x2 = padding + ((i + 1) * stepX);
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, centerY);
+        ctx.lineTo(x2, centerY);
+        ctx.strokeStyle = i === 0 ? '#6366f1' : '#334155';
+        ctx.lineWidth = i === 0 ? 3 : 2;
+        ctx.stroke();
+
+        // Arrow head
+        ctx.beginPath();
+        ctx.moveTo(x2 - 10, centerY - 5);
+        ctx.lineTo(x2, centerY);
+        ctx.lineTo(x2 - 10, centerY + 5);
+        ctx.fillStyle = i === 0 ? '#6366f1' : '#334155';
+        ctx.fill();
+      }
+
+      // Draw Nodes
+      displaySteps.forEach((s, idx) => {
+        const x = padding + (idx * stepX);
+        const y = centerY;
+        const radius = idx === 0 ? 18 : 14;
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = idx === 0 ? '#4f46e5' : (s.is_target_skill ? '#0284c7' : '#1e293b');
+        ctx.fill();
+        ctx.strokeStyle = idx === 0 ? '#818cf8' : '#334155';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Step number inside node
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.step, x, y);
+
+        // Label above or below
+        ctx.fillStyle = idx === 0 ? '#38bdf8' : '#e2e8f0';
+        ctx.font = idx === 0 ? 'bold 12px Plus Jakarta Sans, sans-serif' : '500 11px Plus Jakarta Sans, sans-serif';
+        const labelY = idx % 2 === 0 ? y - 28 : y + 32;
+        ctx.fillText(s.skill_name, x, labelY);
+      });
+    }
+
     function startTutoringFromRoadmap() {
-      // Switch to tutor tab and start session
       document.querySelectorAll('.tab-btn')[1].click();
       initTutorSession();
     }
@@ -648,7 +843,6 @@
       const msg = input.value.trim();
       if (!msg) return;
 
-      // Add user message to UI immediately
       const chatBox = document.getElementById('chat-messages');
       chatBox.innerHTML += `<div class="message user">${escapeHtml(msg)}</div>`;
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -678,28 +872,28 @@
         });
         const data = await res.json();
 
-        // Update profiler score
+        // Profiler gauge update
         const score = data.mastery_score;
         document.getElementById('profiler-score').textContent = score.toFixed(2);
         document.getElementById('profiler-fill').style.width = (score * 100) + '%';
         document.getElementById('active-skill-badge').textContent = data.current_skill || 'All Mastered!';
 
-        // Update verified skills
+        // Verified skills
         verifiedSkills = data.verified_skills;
         renderVerifiedChips();
 
-        // Update remaining trajectory
+        // Remaining trajectory
         const remChips = document.getElementById('tutor-remaining-chips');
         remChips.innerHTML = data.active_trajectory.map(s => `<span class="chip">${s}</span>`).join('');
 
-        // Render latest agent message
+        // Agent response message
         const chatBox = document.getElementById('chat-messages');
         if (data.agent_message) {
           chatBox.innerHTML += `<div class="message agent">${formatAgentText(data.agent_message)}</div>`;
           chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // Fetch context snippet for active skill
+        // Job context snippet
         if (data.current_skill) {
           fetchContextForSkill(data.current_skill);
         }
@@ -728,7 +922,7 @@
           const c = data.contexts[0];
           document.getElementById('job-context-box').innerHTML = `
             <strong>${c.company}</strong> (${c.job_title}):<br>
-            <em>"${c.snippet}"</em>
+            "${c.snippet}"
           `;
         }
       } catch (e) {}
@@ -749,10 +943,10 @@
         const maxDemand = data.top_skills.length > 0 ? data.top_skills[0].demand_count : 1;
 
         list.innerHTML = data.top_skills.map((s, idx) => `
-          <div style="background: #0d121c; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 0.35rem;">
-              <span>#${idx+1} ${s.skill_name} <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: normal;">(${s.category})</span></span>
-              <span style="color: var(--accent);">${s.demand_count} jobs</span>
+          <div style="background: #090d16; padding: 0.8rem 1.1rem; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 0.35rem; font-size: 0.88rem;">
+              <span>#${idx+1} ${s.skill_name} <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">(${s.category})</span></span>
+              <span style="color: var(--accent); font-family: 'JetBrains Mono', monospace;">${s.demand_count} jobs</span>
             </div>
             <div class="gauge-bar" style="height: 6px;">
               <div class="gauge-fill" style="width: ${(s.demand_count / maxDemand * 100)}%;"></div>
@@ -764,13 +958,13 @@
         const velBox = document.getElementById('velocity-box');
         if (data.velocity_analysis.trends) {
           velBox.innerHTML = `
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.6rem;">
               Status: <strong>${data.velocity_analysis.status}</strong> (${data.velocity_analysis.window || 'overview'})
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-              ${data.velocity_analysis.trends.slice(0, 8).map(t => `
-                <span class="chip" style="background: #192233;">
-                  ${t.skill_name}: <strong>${t.velocity_pct !== undefined ? (t.velocity_pct > 0 ? '+' : '') + t.velocity_pct + '%' : t.recent_count + ' jobs'}</strong>
+              ${data.velocity_analysis.trends.slice(0, 10).map(t => `
+                <span class="chip" style="background: #172033;">
+                  ${t.skill_name}: <strong style="color: #34d399;">${t.velocity_pct !== undefined ? '+' + t.velocity_pct + '%' : t.recent_count + ' jobs'}</strong>
                 </span>
               `).join('')}
             </div>
@@ -797,12 +991,12 @@
         });
         const data = await res.json();
         container.innerHTML = `
-          <div style="width: 100%; font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem;">
+          <div style="width: 100%; font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; font-weight: 600;">
             Industries requiring <strong>${skill}</strong> commonly deploy:
           </div>
           <span class="chip">Docker</span>
           <span class="chip">PostgreSQL</span>
-          <span class="chip">Linux</span>
+          <span class="chip">Kubernetes</span>
           <span class="chip">Git</span>
           <span class="chip">REST APIs</span>
         `;
@@ -823,9 +1017,10 @@
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Init
+    window.addEventListener('resize', () => drawDAG());
     checkHealth();
     renderVerifiedChips();
+    generateRoadmap();
   </script>
 </body>
 </html>
