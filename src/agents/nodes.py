@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from src.agents.state import LearnerState
 from src.agents.prompts import SOCRATES_PROMPT, PROFILER_PROMPT
 from src.agents.nexus_tools import analyze_student_skill_gap, fetch_real_world_context
+from src.nlp.extractor import canonicalize_skill_name
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -392,9 +393,14 @@ def cognitive_profiler_node(state: LearnerState) -> Dict[str, Any]:
 
     if score >= MASTERY_THRESHOLD:
         # Mastery achieved
-        if skill and skill not in verified:
-            verified.append(skill)
-        if trajectory and trajectory[0].lower() == skill.lower():
+        canon_skill = canonicalize_skill_name(skill) if skill else ""
+        clean_verified = [canonicalize_skill_name(s) for s in verified if canonicalize_skill_name(s)]
+        verified_lower = {v.lower() for v in clean_verified}
+        if canon_skill and canon_skill.lower() not in verified_lower:
+            clean_verified.append(canon_skill)
+        verified = clean_verified
+
+        if trajectory and trajectory[0].lower() == (canon_skill or skill).lower():
             trajectory = trajectory[1:]
 
         updates["verified_skills"] = verified

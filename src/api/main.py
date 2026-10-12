@@ -367,13 +367,21 @@ async def get_student_session(student_id: str):
 
     state = SESSION_STORE.get(student_id) or load_session(student_id)
     if not state:
-        return {"student_id": student_id, "session": None}
+        return {
+            "student_id": student_id,
+            "session_found": False,
+            "session": None
+        }
 
     return {
         "student_id": student_id,
+        "session_found": True,
+        "target_role": state.get("target_role", "Machine Learning Engineer"),
+        "verified_skills": state.get("verified_skills", []),
+        "overall_mastery": state.get("mastery_score", 0.0),
         "session": {
             "student_id": state.get("student_id", student_id),
-            "target_role": state.get("target_role", "Full Stack Developer"),
+            "target_role": state.get("target_role", "Machine Learning Engineer"),
             "verified_skills": state.get("verified_skills", []),
             "current_skill": state.get("current_skill", ""),
             "mastery_score": state.get("mastery_score", 0.0),

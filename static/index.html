@@ -615,7 +615,7 @@
 
           <div style="margin-bottom: 1.25rem;">
             <label>Target Career Role</label>
-            <input type="text" id="target-role-input" value="Machine Learning Engineer" placeholder="e.g. Data Scientist">
+            <input type="text" id="target-role-input" value="Machine Learning Engineer" placeholder="e.g. Data Scientist" onchange="generateRoadmap()" onkeydown="if(event.key==='Enter'){ event.preventDefault(); generateRoadmap(); }">
           </div>
         </div>
 
@@ -1113,11 +1113,11 @@
         document.getElementById('match-pct-text').textContent = data.match_percentage + '%';
         document.getElementById('match-bar-fill').style.width = data.match_percentage + '%';
         document.getElementById('matched-count-label').textContent = `${data.matched_skills.length} Matched Skills`;
-        document.getElementById('required-count-label').textContent = `${data.total_required} Total Required`;
+        document.getElementById('required-count-label').textContent = `${data.total_required} Required Skills`;
 
-        currentTrajectory = data.ordered_trajectory;
+        currentTrajectory = data.ordered_trajectory || [];
         currentDagEdges = data.dag_edges || [];
-        document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
+        document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' pending steps';
         renderTrajectorySteps(currentTrajectory);
         drawDAG(currentTrajectory, currentDagEdges);
       } catch (e) {
@@ -1130,6 +1130,7 @@
       if (!trajectory || trajectory.length === 0) {
         stepList.innerHTML = '<div style="color: #34d399; text-align: center; padding: 2rem;">🎉 Outstanding! All required skills for this role are already verified!</div>';
         document.getElementById('start-tutor-btn').style.display = 'none';
+        document.getElementById('trajectory-count').textContent = '0 pending steps (Mastered)';
         drawDAG([], []);
         return;
       }
@@ -1170,11 +1171,11 @@
         document.getElementById('match-pct-text').textContent = data.match_percentage + '%';
         document.getElementById('match-bar-fill').style.width = data.match_percentage + '%';
         document.getElementById('matched-count-label').textContent = `${data.matched_skills.length} Matched Skills`;
-        document.getElementById('required-count-label').textContent = `${data.total_required} Total Required`;
+        document.getElementById('required-count-label').textContent = `${data.total_required} Required Skills`;
 
-        currentTrajectory = data.ordered_trajectory;
+        currentTrajectory = data.ordered_trajectory || [];
         currentDagEdges = data.dag_edges || [];
-        document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
+        document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' pending steps';
         renderTrajectorySteps(currentTrajectory);
         drawDAG(currentTrajectory, currentDagEdges);
       } catch (e) {
@@ -1201,10 +1202,21 @@
       ctx.clearRect(0, 0, W, H);
 
       if (!steps || steps.length === 0) {
-        ctx.fillStyle = '#64748b';
-        ctx.font = '13px Plus Jakarta Sans, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('No DAG trajectory active. Click "Calculate Prerequisite Learning Roadmap".', W / 2, H / 2);
+        const matchPctText = document.getElementById('match-pct-text');
+        const isCompleted = matchPctText && (matchPctText.textContent === '100%' || matchPctText.textContent === '100.0%');
+        if (isCompleted) {
+          ctx.fillStyle = '#10b981';
+          ctx.font = 'bold 16px Plus Jakarta Sans, sans-serif';
+          ctx.fillText('✓ 100% Curriculum Mastered!', W / 2, H / 2 - 12);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '12px Plus Jakarta Sans, sans-serif';
+          ctx.fillText('All required prerequisite skills for this role are verified.', W / 2, H / 2 + 14);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '13px Plus Jakarta Sans, sans-serif';
+          ctx.fillText('No DAG trajectory active. Click "Calculate Prerequisite Learning Roadmap".', W / 2, H / 2);
+        }
         return;
       }
 
@@ -1463,7 +1475,8 @@
 
     function startTutoringFromRoadmap() {
       document.querySelectorAll('.tab-btn')[1].click();
-      initTutorSession();
+      const firstSkill = (currentTrajectory && currentTrajectory.length > 0) ? currentTrajectory[0].skill_name : null;
+      initTutorSession(firstSkill);
     }
 
     // Tutor Chat (Phase 5)
@@ -2097,29 +2110,25 @@
         const res = await fetch(`/api/v1/session/${encodeURIComponent(studentId)}`);
         if (res.ok) {
           const s = await res.json();
-          if (s && s.session_found) {
-            if (s.target_role) {
-              const roleSelect = document.getElementById('target-role-select');
-              if (roleSelect) {
-                // If the role is in the select, set it; otherwise add an option
-                let opt = Array.from(roleSelect.options).find(o => o.value.toLowerCase() === s.target_role.toLowerCase());
-                if (!opt) {
-                  opt = document.createElement('option');
-                  opt.value = s.target_role;
-                  opt.textContent = s.target_role;
-                  roleSelect.appendChild(opt);
-                }
-                roleSelect.value = opt.value;
+          if (s && (s.session_found || s.session)) {
+            const sess = s.session || s;
+            const targetRole = sess.target_role || s.target_role;
+            if (targetRole) {
+              const roleInput = document.getElementById('target-role-input');
+              if (roleInput) {
+                roleInput.value = targetRole;
               }
             }
-            if (Array.isArray(s.verified_skills) && s.verified_skills.length > 0) {
-              verifiedSkills = s.verified_skills;
+            const restoredSkills = sess.verified_skills || s.verified_skills;
+            if (Array.isArray(restoredSkills) && restoredSkills.length > 0) {
+              verifiedSkills = restoredSkills;
             }
-            if (s.overall_mastery !== undefined && s.overall_mastery !== null) {
+            const masteryVal = sess.mastery_score !== undefined ? sess.mastery_score : s.overall_mastery;
+            if (masteryVal !== undefined && masteryVal !== null) {
               const prof = document.getElementById('profiler-score');
-              const bar = document.getElementById('profiler-bar');
-              if (prof) prof.textContent = Math.round(s.overall_mastery * 100) + '%';
-              if (bar) bar.style.width = Math.round(s.overall_mastery * 100) + '%';
+              const fill = document.getElementById('profiler-fill');
+              if (prof) prof.textContent = Number(masteryVal).toFixed(2);
+              if (fill) fill.style.width = Math.round(Number(masteryVal) * 100) + '%';
             }
           }
         }

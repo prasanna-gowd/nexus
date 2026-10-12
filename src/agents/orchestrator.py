@@ -16,6 +16,7 @@ from src.agents.nodes import (
     MASTERY_THRESHOLD
 )
 from src.api.db import save_session, load_session, record_learning_event
+from src.nlp.extractor import canonicalize_skill_name
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +95,17 @@ def run_agent_turn(
         reset_session: Force a fresh learning session.
         specific_skill: Specific skill directly clicked from the roadmap DAG.
     """
-    if verified_skills is None:
-        verified_skills = []
+    # Canonicalize verified_skills
+    clean_verified = []
+    seen = set()
+    for s in (verified_skills or []):
+        canon = canonicalize_skill_name(s)
+        if canon and canon.lower() not in seen:
+            seen.add(canon.lower())
+            clean_verified.append(canon)
+
+    if specific_skill:
+        specific_skill = canonicalize_skill_name(specific_skill)
 
     # 1. Retrieve or initialize session state
     if reset_session:
@@ -103,7 +113,7 @@ def run_agent_turn(
         state: LearnerState = {
             "student_id": student_id,
             "target_role": target_role,
-            "verified_skills": list(verified_skills),
+            "verified_skills": clean_verified,
             "active_trajectory": [],
             "current_skill": specific_skill.strip() if specific_skill else "",
             "chat_history": [],
@@ -122,9 +132,11 @@ def run_agent_turn(
         # Allow updating verified skills or role if supplied
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
-        for s in verified_skills:
-            if s not in state.get("verified_skills", []):
-                state["verified_skills"].append(s)
+        cur_v_lower = {v.lower() for v in state.get("verified_skills", [])}
+        for s in clean_verified:
+            if s.lower() not in cur_v_lower:
+                state.setdefault("verified_skills", []).append(s)
+                cur_v_lower.add(s.lower())
     elif (db_session := load_session(student_id)):
         logger.info(f"Restored session for {student_id} from persistent DuckDB storage")
         state = db_session
@@ -135,15 +147,17 @@ def run_agent_turn(
             state["question_index"] = 0
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
-        for s in verified_skills:
-            if s not in state.get("verified_skills", []):
-                state["verified_skills"].append(s)
+        cur_v_lower = {v.lower() for v in state.get("verified_skills", [])}
+        for s in clean_verified:
+            if s.lower() not in cur_v_lower:
+                state.setdefault("verified_skills", []).append(s)
+                cur_v_lower.add(s.lower())
     else:
         logger.info(f"Initializing new learning session for {student_id} (Role: {target_role})")
         state: LearnerState = {
             "student_id": student_id,
             "target_role": target_role,
-            "verified_skills": list(verified_skills),
+            "verified_skills": clean_verified,
             "active_trajectory": [],
             "current_skill": specific_skill.strip() if specific_skill else "",
             "chat_history": [],

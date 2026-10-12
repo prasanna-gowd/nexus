@@ -9,6 +9,8 @@ import logging
 from typing import List, Dict, Set, Tuple, Optional, Any
 import networkx as nx
 
+from src.nlp.extractor import canonicalize_skill_name
+
 logger = logging.getLogger(__name__)
 
 # Standard pedagogical prerequisite knowledge base.
@@ -24,7 +26,6 @@ CURATED_PREREQUISITES: List[Tuple[str, str]] = [
     ("JavaScript", "Node.js"),
     ("TypeScript", "Angular"),
     ("TypeScript", "Next.js"),
-    ("TypeScript", "React"),
     ("React", "Next.js"),
 
     # Backend & Server-Side APIs
@@ -139,10 +140,19 @@ class PrerequisiteDAG:
         Returns:
             List of trajectory steps (or tuple of trajectory and dag_edges).
         """
-        verified_set = {s.strip().lower() for s in verified_skills}
-        
+        clean_verified = [canonicalize_skill_name(s) for s in (verified_skills or []) if canonicalize_skill_name(s)]
+        verified_set = {s.lower() for s in clean_verified}
+
+        clean_required = []
+        seen_req = set()
+        for s in (required_skills or []):
+            canon = canonicalize_skill_name(s)
+            if canon and canon.lower() not in seen_req:
+                seen_req.add(canon.lower())
+                clean_required.append(canon)
+
         # 1. Identify missing target skills
-        missing_skills = [s for s in required_skills if s.strip().lower() not in verified_set]
+        missing_skills = [s for s in clean_required if s.lower() not in verified_set]
         if not missing_skills:
             return ([], []) if return_edges else []
 
@@ -150,23 +160,24 @@ class PrerequisiteDAG:
         # If required_skills defines an explicit curriculum/role scope, respect that scope
         # while including foundational prerequisites (like Git, Linux, SQL)
         all_needed_skills: Set[str] = set()
-        required_lower = {s.strip().lower() for s in required_skills}
+        required_lower = {s.lower() for s in clean_required}
 
         for skill in missing_skills:
             all_needed_skills.add(skill)
             # Pull direct predecessors that belong to required_skills or are direct prerequisites
             ancestors = self.get_prerequisites_for_skill(skill)
             for anc in ancestors:
-                if anc.lower() in verified_set:
+                anc_canon = canonicalize_skill_name(anc)
+                if anc_canon.lower() in verified_set:
                     continue
                 # If required_skills already explicitly defines the scope (len >= 5), only include ancestors that are in required_skills
                 # or have direct relevance, avoiding unrelated language/framework stacks
-                if len(required_skills) >= 5 and anc.lower() not in required_lower:
+                if len(clean_required) >= 5 and anc_canon.lower() not in required_lower:
                     # Only include essential cross-stack foundations (Git, Linux, SQL, HTML/CSS if web)
-                    if anc in ["Git", "Linux", "SQL"]:
-                        all_needed_skills.add(anc)
+                    if anc_canon in ["Git", "Linux", "SQL"]:
+                        all_needed_skills.add(anc_canon)
                 else:
-                    all_needed_skills.add(anc)
+                    all_needed_skills.add(anc_canon)
 
         # 3. Create subgraph of all needed skills
         subgraph = nx.DiGraph()
@@ -174,8 +185,10 @@ class PrerequisiteDAG:
             subgraph.add_node(skill)
 
         for u, v in self.graph.edges():
-            if u in all_needed_skills and v in all_needed_skills:
-                subgraph.add_edge(u, v)
+            u_c = canonicalize_skill_name(u)
+            v_c = canonicalize_skill_name(v)
+            if u_c in all_needed_skills and v_c in all_needed_skills:
+                subgraph.add_edge(u_c, v_c)
 
         # 4. Ensure subgraph is acyclic
         if not nx.is_directed_acyclic_graph(subgraph):
@@ -271,56 +284,83 @@ def perform_skill_gap_analysis(
     """
     Core Skill-Gap Engine:
     Compares student's verified skills against target role requirements.
+    Uses canonical skill IDs to reconcile verified skills, avoiding loose matching,
+    duplicate aliases, and false readiness percentages.
     Ensures sensible, industry-standard prerequisite sequences.
     """
     from src.analytics.trends import MarketAnalytics
 
     analytics = MarketAnalytics()
-    verified_lower = {s.strip().lower() for s in student_skills}
 
-    # Retrieve required skills for role
+    # 1. Canonicalize and deduplicate student verified skills
+    clean_student_skills = []
+    seen_student = set()
+    for s in (student_skills or []):
+        canon = canonicalize_skill_name(s)
+        if canon and canon.lower() not in seen_student:
+            seen_student.add(canon.lower())
+            clean_student_skills.append(canon)
+
+    # 2. Retrieve required skills for role
+    raw_required = []
     if role_skills_override:
-        required_skill_names = role_skills_override
+        raw_required = list(role_skills_override)
     else:
         # Check standard curriculum first to guarantee sensible pedagogical sequencing
         matched_curriculum_key = next((k for k in ROLE_CURRICULUM if k in target_role.lower()), None)
         if matched_curriculum_key:
-            required_skill_names = list(ROLE_CURRICULUM[matched_curriculum_key])
+            raw_required = list(ROLE_CURRICULUM[matched_curriculum_key])
             # Enrich with real market demand signals if high-frequency skills exist in DB
             try:
                 role_demand = analytics.get_skills_by_role(target_role, limit=10)
-                existing_lower = {s.lower() for s in required_skill_names}
+                existing_lower = {s.lower() for s in raw_required}
                 for item in role_demand:
                     s_name = item.get("skill_name", "").strip()
                     if s_name and s_name.lower() not in existing_lower and item.get("demand_count", 0) >= 2:
-                        required_skill_names.append(s_name)
+                        raw_required.append(s_name)
                         existing_lower.add(s_name.lower())
             except Exception:
                 pass
         else:
             role_demand = analytics.get_skills_by_role(target_role, limit=12)
             if role_demand:
-                required_skill_names = [item["skill_name"] for item in role_demand]
+                raw_required = [item["skill_name"] for item in role_demand]
             else:
                 top_general = analytics.get_top_skills(limit=8)
-                required_skill_names = [s["skill_name"] for s in top_general] or ["Python", "SQL", "Git", "Docker"]
+                raw_required = [s["skill_name"] for s in top_general] or ["Python", "SQL", "Git", "Docker"]
 
-    matched_skills = [s for s in required_skill_names if s.strip().lower() in verified_lower]
-    missing_skills = [s for s in required_skill_names if s.strip().lower() not in verified_lower]
+    # 3. Canonicalize and deduplicate required skills
+    canonical_required = []
+    seen_req = set()
+    for s in raw_required:
+        canon = canonicalize_skill_name(s)
+        if canon and canon.lower() not in seen_req:
+            seen_req.add(canon.lower())
+            canonical_required.append(canon)
 
-    # Compute topological DAG trajectory and edges
+    # 4. Reconcile matched and missing skills
+    matched_skills = [s for s in canonical_required if s.lower() in seen_student]
+    missing_skills = [s for s in canonical_required if s.lower() not in seen_student]
+
+    total_required = len(canonical_required)
+    if total_required == 0:
+        match_pct = 0.0
+    elif len(missing_skills) == 0:
+        match_pct = 100.0
+    else:
+        match_pct = round((len(matched_skills) / total_required) * 100, 1)
+
+    # 5. Compute topological DAG trajectory and edges
     dag = PrerequisiteDAG()
-    trajectory, dag_edges = dag.compute_learning_trajectory(missing_skills, student_skills, return_edges=True)
-
-    match_pct = round((len(matched_skills) / max(len(required_skill_names), 1)) * 100, 1)
+    trajectory, dag_edges = dag.compute_learning_trajectory(missing_skills, clean_student_skills, return_edges=True)
 
     return {
         "target_role": target_role,
         "match_percentage": match_pct,
-        "verified_skills": student_skills,
+        "verified_skills": clean_student_skills,
         "matched_skills": matched_skills,
         "missing_skills": missing_skills,
-        "total_required": len(required_skill_names),
+        "total_required": total_required,
         "ordered_trajectory": trajectory,
         "dag_edges": dag_edges,
     }

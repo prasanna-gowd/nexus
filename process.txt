@@ -320,3 +320,46 @@ Repository: C:\Users\prasa\Desktop\capstone
     re-calculates role readiness match percentage, and refreshes the longitudinal progress chart.
   * 100% test pass rate across all 34 unit, integration, and E2E tests (`pytest`).
 ================================================================================
+
+14. ROADMAP CORRECTNESS, CANONICAL TAXONOMY & DAG INTEGRATION AUDIT
+--------------------------------------------------------------------------------
+- Canonical Skill Normalization & Alias Reconciliation (`src/nlp/extractor.py` & `src/engine/dag_scheduler.py`):
+  * Built top-level `canonicalize_skill_name()` with comprehensive dictionary (`SKILL_ALIASES`) mapping 90+ aliases
+    and case variants (e.g. `reactjs`, `react.js`, `react` -> `React`; `postgres`, `psql` -> `PostgreSQL`;
+    `k8s`, `kube` -> `Kubernetes`; `js` -> `JavaScript`; `ts` -> `TypeScript`; `cicd` -> `CI/CD`).
+  * `perform_skill_gap_analysis()` deduplicates and canonicalizes both incoming student skills and target role requirements
+    prior to reconciliation. Prevents duplicate chips, loose string matching, and inflated/false match percentages.
+
+- Genuine Prerequisite DAG Structure & Defensible Dependencies:
+  * Pruned redundant edge `("TypeScript", "React")` in `CURATED_PREREQUISITES`, allowing `JavaScript` to branch
+    naturally into `React`, `TypeScript`, and `Node.js` simultaneously on the same topological tier for Full Stack roles,
+    and converge onto `Next.js` (`React` + `TypeScript`).
+  * Verified Full Stack Developer curriculum topological ordering:
+    - Tier 0 (Foundations): `Git`, `HTML/CSS`, `SQL`
+    - Tier 1 (Core): `JavaScript` (from HTML/CSS), `PostgreSQL` (from SQL), `Docker` (from Git)
+    - Tier 2 (Frameworks & Runtime): `React`, `TypeScript`, `Node.js` (from JavaScript)
+    - Tier 3 (APIs & Advanced Full Stack): `REST API` (from Node.js)
+  * Maintained self-loop resistance and cycle detection/removal across all graph operations.
+
+- Consistent Dashboard Metrics & Unified State Binding (`static/index.html` & `src/api/main.py`):
+  * Fixed metric derivation consistency:
+    - `${data.matched_skills.length} Matched Skills`
+    - `${data.total_required} Required Skills`
+    - `${currentTrajectory.length} pending steps`
+    - Step items count strictly equals `ordered_trajectory.length`.
+  * Added keyboard and change listeners on `target-role-input` for instant roadmap recalculation.
+  * Gracefully rendered 100% completed roadmap state in both step list and canvas (`✓ 100% Curriculum Mastered!`).
+  * Updated `startTutoringFromRoadmap()` to launch immediately with `currentTrajectory[0].skill_name`.
+  * Fixed persistent session restoration on reload: `target-role-input`, `verifiedSkills`, and cognitive profiler score.
+
+- Test Suite Expansion:
+  * Added 6 new unit tests in `tests/test_dag_scheduler.py` covering:
+    - Empty student skills (`[]`) -> 0% match, all required skills in trajectory.
+    - Completed roadmap (100% match) -> empty trajectory, 0 missing skills.
+    - Duplicate skill aliases reconciliation (`reactjs`, `React`, `postgres`, `psql`, `js`).
+    - Full Stack Developer branching sequence defensibility.
+    - Self-loop and invalid prerequisite edge rejection.
+    - Role switching requirement regeneration.
+  * 100% test pass rate across 40 unit, integration, and E2E tests (`pytest`).
+================================================================================
+
