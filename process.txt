@@ -264,3 +264,36 @@ Repository: C:\Users\prasa\Desktop\capstone
   * Added dark / light theme toggle (`🌙 Dark` / `☀️ Light`) with saved preference.
   * Added mobile-responsive grid layout rules.
 ================================================================================
+
+12. ROLE-SPECIFIC CURRICULA, MULTI-TIER PREREQUISITE DAG & BACKEND BINDING
+--------------------------------------------------------------------------------
+- Canonical Role-Specific Curricula (`src/engine/dag_scheduler.py`):
+  * Resolved issue where querying "Full Stack Developer" produced sparse unrelated skills
+    due to sparse raw job data.
+  * Added canonical curricula via `ROLE_CURRICULUM` for:
+    - Full Stack Developer: HTML/CSS -> JavaScript -> TypeScript -> React -> Node.js -> REST API -> SQL -> PostgreSQL -> Git -> Docker
+    - Machine Learning Engineer: Python -> NumPy -> Pandas -> Machine Learning -> PyTorch -> Docker -> MLOps
+    - Frontend Developer: HTML/CSS -> JavaScript -> TypeScript -> React -> Git -> REST API
+    - Backend Developer: Python / Go -> SQL -> PostgreSQL -> REST API -> Docker -> Kubernetes -> Redis
+    - DevOps Engineer: Linux -> Git -> Docker -> Kubernetes -> CI/CD -> Terraform -> AWS
+    - Data Engineer: Python -> SQL -> PostgreSQL -> Pandas -> Docker -> Apache Spark -> Kafka
+  * Enriched with live DuckDB market demand signals for frequently co-occurring skills (>= 2 jobs).
+  * Expanded prerequisite graph `CURATED_PREREQUISITES` covering web, API, database, and DevOps domains.
+
+- True Topological Generational DAG Renderer (`static/index.html`):
+  * Replaced linear sinusoidal plot with true multi-tier topological generation rendering.
+  * Evaluates generations (levels) using `networkx.topological_generations()` in the backend.
+  * Renders generational columns (Tier 0 -> Tier 1 -> Tier 2 -> Target Role).
+  * Draws smooth cubic Bezier curves between prerequisite parents and dependents with arrowheads.
+  * Visual status styling: Mastered (green pill with checkmark), Active Milestone (indigo pill with glowing border),
+    Target Role (purple hex badge), and Prerequisite (slate outline).
+  * Interactive HTML5 canvas with hover tooltips displaying skill tier, prerequisites, and dependents.
+
+- Full Backend Dashboard State Binding:
+  * Bound Market Intelligence badge to `GET /api/v1/market/summary` (207 job postings, 67 skills).
+  * Bound Technology Co-occurrence Explorer to `GET /api/v1/market/co-occurrences`, replacing hardcoded chips
+    with live DuckDB query results.
+  * Added `GET /api/v1/session/{student_id}` to restore student role, verified skills, and profiler mastery on load.
+  * Synchronized survey evaluation, roadmap generation, and diagnostic tests with backend state.
+  * 100% test pass rate across 34 unit, integration, and E2E tests (`pytest`).
+================================================================================

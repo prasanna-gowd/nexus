@@ -687,8 +687,18 @@
         </div>
 
         <!-- Interactive Canvas DAG Visualization -->
-        <div id="dag-canvas-container">
-          <canvas id="dag-canvas"></canvas>
+        <div id="dag-canvas-container" style="position: relative; width: 100%; height: 320px; background: #070a12; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.75rem; overflow: hidden;">
+          <canvas id="dag-canvas" style="display: block; width: 100%; height: 100%; cursor: pointer;"></canvas>
+          <div id="dag-tooltip" style="display: none; position: absolute; background: rgba(17, 23, 38, 0.95); backdrop-filter: blur(8px); border: 1px solid var(--primary-light); padding: 0.6rem 0.9rem; border-radius: 8px; font-size: 0.78rem; pointer-events: none; z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,0.6);"></div>
+        </div>
+
+        <!-- DAG Legend -->
+        <div id="dag-legend" style="display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; padding: 0.45rem 0.75rem; background: #090d16; border-radius: 8px; border: 1px solid var(--border);">
+          <span><strong style="color: #10b981;">✓ Mastered</strong></span>
+          <span><strong style="color: #818cf8;">★ Active Milestone</strong></span>
+          <span><strong style="color: #38bdf8;">⬡ Target Role Goal</strong></span>
+          <span><strong style="color: #94a3b8;">○ Prerequisite Step</strong></span>
+          <span style="margin-left: auto; color: var(--text-muted); font-style: italic;">Hover nodes to inspect • Click to study</span>
         </div>
 
         <div class="step-list" id="step-list">
@@ -795,7 +805,7 @@
       <div class="card">
         <h2 class="card-title">
           <span>In-Demand Technical Skills Ranking</span>
-          <span style="font-size: 0.75rem; color: var(--primary-light); background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 0.2rem 0.6rem; border-radius: 12px;">207 Job Postings</span>
+          <span id="market-jobs-badge" style="font-size: 0.75rem; color: var(--primary-light); background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 0.2rem 0.6rem; border-radius: 12px;">207 Analyzed Job Postings</span>
         </h2>
         <div style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.85rem;">
           Extracted directly from Remotive & Hacker News hiring threads, normalized against ESCO standards.
@@ -926,6 +936,9 @@
   <script>
     let verifiedSkills = ['Python'];
     let currentTrajectory = [];
+    let currentDagEdges = [];
+    let dagHoveredNode = null;
+    let dagNodeMap = {};
     let studentId = localStorage.getItem('nexus_student_id') || ('STU-' + Math.floor(1000 + Math.random() * 9000));
     localStorage.setItem('nexus_student_id', studentId);
 
@@ -1103,9 +1116,10 @@
         document.getElementById('required-count-label').textContent = `${data.total_required} Total Required`;
 
         currentTrajectory = data.ordered_trajectory;
+        currentDagEdges = data.dag_edges || [];
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
         renderTrajectorySteps(currentTrajectory);
-        drawDAG(currentTrajectory);
+        drawDAG(currentTrajectory, currentDagEdges);
       } catch (e) {
         stepList.innerHTML = '<div style="color: #ef4444; padding: 1rem;">Failed to analyze job posting: ' + e.message + '</div>';
       }
@@ -1116,7 +1130,7 @@
       if (!trajectory || trajectory.length === 0) {
         stepList.innerHTML = '<div style="color: #34d399; text-align: center; padding: 2rem;">🎉 Outstanding! All required skills for this role are already verified!</div>';
         document.getElementById('start-tutor-btn').style.display = 'none';
-        drawDAG([]);
+        drawDAG([], []);
         return;
       }
 
@@ -1126,9 +1140,10 @@
           <div class="step-info">
             <div class="step-title">
               ${step.skill_name} 
-              ${step.is_target_skill ? '<span style="font-size: 0.7rem; color: #818cf8; border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Target Role</span>' : '<span style="font-size: 0.7rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Prerequisite</span>'}
+              <span style="font-size: 0.68rem; color: #a5b4fc; background: rgba(99, 102, 241, 0.15); border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Level ${step.level !== undefined ? step.level : 0}</span>
+              ${step.is_target_skill ? '<span style="font-size: 0.68rem; color: #38bdf8; border: 1px solid #0284c7; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Target Role</span>' : '<span style="font-size: 0.68rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Prerequisite</span>'}
             </div>
-            <div class="step-prereqs">${step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill'}</div>
+            <div class="step-prereqs">${step.prerequisites && step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill (no prerequisites)'}</div>
           </div>
         </div>
       `).join('');
@@ -1150,95 +1165,282 @@
         });
         const data = await res.json();
 
-        // Update Match Percentage
+        // Update Match Percentage and Status
         document.getElementById('match-pct-text').textContent = data.match_percentage + '%';
         document.getElementById('match-bar-fill').style.width = data.match_percentage + '%';
         document.getElementById('matched-count-label').textContent = `${data.matched_skills.length} Matched Skills`;
         document.getElementById('required-count-label').textContent = `${data.total_required} Total Required`;
 
         currentTrajectory = data.ordered_trajectory;
+        currentDagEdges = data.dag_edges || [];
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
         renderTrajectorySteps(currentTrajectory);
-        drawDAG(currentTrajectory);
+        drawDAG(currentTrajectory, currentDagEdges);
       } catch (e) {
         stepList.innerHTML = '<div style="color: #ef4444; padding: 1rem;">Failed to calculate roadmap: ' + e.message + '</div>';
       }
     }
 
-    // HTML5 Canvas DAG Visualization
-    function drawDAG(steps = currentTrajectory) {
+    // Genuine Multi-Tier Topological Prerequisite DAG Renderer
+    function drawDAG(steps = currentTrajectory, edges = currentDagEdges) {
       const canvas = document.getElementById('dag-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const container = document.getElementById('dag-canvas-container');
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      ctx.clearRect(0, 0, W, H);
 
       if (!steps || steps.length === 0) {
         ctx.fillStyle = '#64748b';
         ctx.font = '13px Plus Jakarta Sans, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('No DAG trajectory active. Click Calculate Roadmap.', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('No DAG trajectory active. Click "Calculate Prerequisite Learning Roadmap".', W / 2, H / 2);
         return;
       }
 
-      const displaySteps = steps.slice(0, 6);
-      const n = displaySteps.length;
-      const padding = 60;
-      const availWidth = canvas.width - (padding * 2);
-      const stepX = availWidth / Math.max(1, n - 1);
-      const centerY = canvas.height / 2;
+      // Group steps into topological generation levels
+      const levelGroups = {};
+      steps.forEach(s => {
+        const lvl = s.level !== undefined ? s.level : 0;
+        if (!levelGroups[lvl]) levelGroups[lvl] = [];
+        levelGroups[lvl].push(s);
+      });
 
-      // Draw connecting edges
-      for (let i = 0; i < n - 1; i++) {
-        const x1 = padding + (i * stepX);
-        const x2 = padding + ((i + 1) * stepX);
-        
-        ctx.beginPath();
-        ctx.moveTo(x1, centerY);
-        ctx.lineTo(x2, centerY);
-        ctx.strokeStyle = i === 0 ? '#6366f1' : '#334155';
-        ctx.lineWidth = i === 0 ? 3 : 2;
-        ctx.stroke();
+      const sortedLevels = Object.keys(levelGroups).map(Number).sort((a, b) => a - b);
+      const numLevels = sortedLevels.length;
 
-        // Arrow head
-        ctx.beginPath();
-        ctx.moveTo(x2 - 10, centerY - 5);
-        ctx.lineTo(x2, centerY);
-        ctx.lineTo(x2 - 10, centerY + 5);
-        ctx.fillStyle = i === 0 ? '#6366f1' : '#334155';
-        ctx.fill();
+      const padLeft = 80;
+      const padRight = 80;
+      const padTop = 45;
+      const padBottom = 45;
+      const colWidth = numLevels > 1 ? (W - padLeft - padRight) / (numLevels - 1) : 0;
+
+      // Map coordinates for all nodes in the DAG
+      dagNodeMap = {};
+      sortedLevels.forEach((lvl, colIdx) => {
+        const colNodes = levelGroups[lvl];
+        const numInCol = colNodes.length;
+        const x = numLevels === 1 ? W / 2 : padLeft + colIdx * colWidth;
+
+        colNodes.forEach((node, rowIdx) => {
+          const y = padTop + (rowIdx + 0.5) * ((H - padTop - padBottom) / numInCol);
+          const isFirst = (node.step === 1);
+          const isVerified = verifiedSkills.map(s => s.toLowerCase()).includes(node.skill_name.toLowerCase());
+          const radius = isFirst ? 18 : 15;
+
+          dagNodeMap[node.skill_name] = {
+            name: node.skill_name,
+            x,
+            y,
+            radius,
+            step: node.step,
+            level: lvl,
+            is_target_skill: node.is_target_skill,
+            isVerified,
+            isFirst,
+            prerequisites: node.prerequisites || []
+          };
+        });
+      });
+
+      // Gather unique directed edges
+      const allEdges = [];
+      const edgeSet = new Set();
+
+      if (edges && edges.length > 0) {
+        edges.forEach(e => {
+          const k = `${e.source}->${e.target}`;
+          if (!edgeSet.has(k) && dagNodeMap[e.source] && dagNodeMap[e.target]) {
+            edgeSet.add(k);
+            allEdges.push({ source: e.source, target: e.target });
+          }
+        });
       }
 
-      // Draw Nodes
-      displaySteps.forEach((s, idx) => {
-        const x = padding + (idx * stepX);
-        const y = centerY;
-        const radius = idx === 0 ? 18 : 14;
+      // Supplement from node prerequisites
+      steps.forEach(node => {
+        (node.prerequisites || []).forEach(p => {
+          const k = `${p}->${node.skill_name}`;
+          if (!edgeSet.has(k) && dagNodeMap[p] && dagNodeMap[node.skill_name]) {
+            edgeSet.add(k);
+            allEdges.push({ source: p, target: node.skill_name });
+          }
+        });
+      });
 
-        // Node circle
+      // 1. Draw Directed Curved Edges with Arrowheads
+      allEdges.forEach(e => {
+        const fromNode = dagNodeMap[e.source];
+        const toNode = dagNodeMap[e.target];
+        if (!fromNode || !toNode) return;
+
+        const isHovered = dagHoveredNode && (dagHoveredNode === e.source || dagHoveredNode === e.target);
+        const isPrereqOfHovered = dagHoveredNode && dagHoveredNode === e.target;
+
+        const x1 = fromNode.x + fromNode.radius;
+        const y1 = fromNode.y;
+        const x2 = toNode.x - toNode.radius - 4;
+        const y2 = toNode.y;
+
+        const dx = x2 - x1;
+        const cp1x = x1 + dx * 0.5;
+        const cp1y = y1;
+        const cp2x = x1 + dx * 0.5;
+        const cp2y = y2;
+
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = idx === 0 ? '#4f46e5' : (s.is_target_skill ? '#0284c7' : '#1e293b');
-        ctx.fill();
-        ctx.strokeStyle = idx === 0 ? '#818cf8' : '#334155';
-        ctx.lineWidth = 2;
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2);
+
+        if (isHovered) {
+          ctx.strokeStyle = isPrereqOfHovered ? '#38bdf8' : '#818cf8';
+          ctx.lineWidth = 3;
+        } else if (fromNode.isVerified) {
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.65)';
+          ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1.8;
+        }
         ctx.stroke();
 
-        // Step number inside node
+        // Arrowhead pointing into toNode
+        const arrowLen = 7;
+        ctx.fillStyle = isHovered ? (isPrereqOfHovered ? '#38bdf8' : '#818cf8') : (fromNode.isVerified ? '#10b981' : '#475569');
+        ctx.beginPath();
+        ctx.moveTo(x2 + 4, y2);
+        ctx.lineTo(x2 - arrowLen, y2 - 4);
+        ctx.lineTo(x2 - arrowLen, y2 + 4);
+        ctx.closePath();
+        ctx.fill();
+      });
+
+      // 2. Draw Nodes
+      Object.values(dagNodeMap).forEach(n => {
+        const isHovered = dagHoveredNode === n.name;
+
+        // Glowing outer aura ring for active next milestone or hovered
+        if (n.isFirst || isHovered) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.radius + 6, 0, Math.PI * 2);
+          ctx.fillStyle = n.isFirst ? 'rgba(99, 102, 241, 0.28)' : 'rgba(56, 189, 248, 0.25)';
+          ctx.fill();
+        }
+
+        // Node Circle Body
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+        if (n.isVerified) {
+          ctx.fillStyle = '#059669';
+          ctx.strokeStyle = '#34d399';
+        } else if (n.isFirst) {
+          ctx.fillStyle = '#4f46e5';
+          ctx.strokeStyle = '#a5b4fc';
+        } else if (n.is_target_skill) {
+          ctx.fillStyle = '#0369a1';
+          ctx.strokeStyle = '#38bdf8';
+        } else {
+          ctx.fillStyle = '#1e293b';
+          ctx.strokeStyle = '#475569';
+        }
+        ctx.fill();
+        ctx.lineWidth = isHovered ? 3 : 2;
+        ctx.stroke();
+
+        // Icon / Number inside node
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Plus Jakarta Sans, sans-serif';
+        ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(s.step, x, y);
+        if (n.isVerified) {
+          ctx.fillText('✓', n.x, n.y);
+        } else if (n.isFirst) {
+          ctx.fillText('★', n.x, n.y);
+        } else {
+          ctx.fillText(n.step, n.x, n.y);
+        }
 
-        // Label above or below
-        ctx.fillStyle = idx === 0 ? '#38bdf8' : '#e2e8f0';
-        ctx.font = idx === 0 ? 'bold 12px Plus Jakarta Sans, sans-serif' : '500 11px Plus Jakarta Sans, sans-serif';
-        const labelY = idx % 2 === 0 ? y - 28 : y + 32;
-        ctx.fillText(s.skill_name, x, labelY);
+        // Skill Label below node
+        const isLight = document.body.classList.contains('light-theme');
+        const textColor = n.isFirst ? '#818cf8' : (n.is_target_skill ? (isLight ? '#0369a1' : '#38bdf8') : (isLight ? '#334155' : '#cbd5e1'));
+        ctx.font = n.isFirst ? 'bold 11px Plus Jakarta Sans, sans-serif' : '600 10px Plus Jakarta Sans, sans-serif';
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'top';
+        ctx.fillText(n.name, n.x, n.y + n.radius + 5);
+      });
+    }
+
+    // Interactivity: Hover Tooltips and Click-to-Study
+    function setupDagInteractivity() {
+      const canvas = document.getElementById('dag-canvas');
+      const tooltip = document.getElementById('dag-tooltip');
+      if (!canvas) return;
+
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let hit = null;
+        for (const [name, node] of Object.entries(dagNodeMap)) {
+          const dist = Math.hypot(mx - node.x, my - node.y);
+          if (dist <= node.radius + 8) {
+            hit = node;
+            break;
+          }
+        }
+
+        if (hit) {
+          canvas.style.cursor = 'pointer';
+          if (dagHoveredNode !== hit.name) {
+            dagHoveredNode = hit.name;
+            drawDAG();
+          }
+
+          if (tooltip) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = Math.min(rect.width - 200, Math.max(10, hit.x + 20)) + 'px';
+            tooltip.style.top = Math.max(10, hit.y - 30) + 'px';
+            const prereqsText = hit.prerequisites.length > 0 ? hit.prerequisites.join(', ') : 'None (Foundational)';
+            const statusText = hit.isVerified ? '✅ Mastered' : (hit.isFirst ? '★ Active Milestone' : '⏳ Pending');
+            tooltip.innerHTML = `
+              <div style="font-weight: 800; color: #f1f5f9; margin-bottom: 2px;">${escapeHtml(hit.name)}</div>
+              <div style="color: var(--text-muted);">Generation Level ${hit.level} • ${statusText}</div>
+              <div style="color: #94a3b8; margin-top: 3px; font-size: 0.72rem;">Prerequisites: <strong>${escapeHtml(prereqsText)}</strong></div>
+              <div style="color: #818cf8; margin-top: 4px; font-size: 0.7rem; font-weight: 600;">👆 Click to start Socratic tutoring</div>
+            `;
+          }
+        } else {
+          canvas.style.cursor = 'default';
+          if (dagHoveredNode) {
+            dagHoveredNode = null;
+            drawDAG();
+          }
+          if (tooltip) tooltip.style.display = 'none';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        dagHoveredNode = null;
+        drawDAG();
+        if (tooltip) tooltip.style.display = 'none';
+      });
+
+      canvas.addEventListener('click', () => {
+        if (dagHoveredNode && dagNodeMap[dagHoveredNode]) {
+          const node = dagNodeMap[dagHoveredNode];
+          switchTab('tutor');
+          initTutorSession(node.name);
+        }
       });
     }
 
@@ -1444,9 +1646,10 @@
         document.getElementById('required-count-label').textContent = `${data.ordered_trajectory.length} Remaining Objectives`;
 
         currentTrajectory = data.ordered_trajectory;
+        currentDagEdges = data.dag_edges || [];
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
         renderTrajectorySteps(currentTrajectory);
-        drawDAG(currentTrajectory);
+        drawDAG(currentTrajectory, currentDagEdges);
         if (typeof loadStudentProgress === 'function') loadStudentProgress();
 
         closeSurvey();
@@ -1485,6 +1688,16 @@
     // Market Trends (Phase 3)
     async function loadMarketTrends() {
       try {
+        // Fetch summary metrics
+        try {
+          const sumRes = await fetch('/api/v1/market/summary');
+          const sumData = await sumRes.json();
+          const badge = document.getElementById('market-jobs-badge');
+          if (badge && sumData.total_jobs) {
+            badge.textContent = `${sumData.total_jobs.toLocaleString()} Analyzed Job Postings (${sumData.total_skills} Skills)`;
+          }
+        } catch (_) {}
+
         const res = await fetch('/api/v1/market/trends?limit=15');
         const data = await res.json();
 
@@ -1530,25 +1743,26 @@
       if (!skill) return;
 
       const container = document.getElementById('cooccur-results');
-      container.innerHTML = '<span style="color: var(--text-muted);">Finding co-occurring technologies...</span>';
+      container.innerHTML = '<span style="color: var(--text-muted);">Querying live DuckDB job co-occurrences...</span>';
 
       try {
-        const res = await fetch('/api/v1/context/retrieve-jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ skill_name: skill, limit: 3 })
-        });
+        const res = await fetch(`/api/v1/market/co-occurrences?skill=${encodeURIComponent(skill)}&limit=10`);
         const data = await res.json();
-        container.innerHTML = `
-          <div style="width: 100%; font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; font-weight: 600;">
-            Industries requiring <strong>${skill}</strong> commonly deploy:
-          </div>
-          <span class="chip">Docker</span>
-          <span class="chip">PostgreSQL</span>
-          <span class="chip">Kubernetes</span>
-          <span class="chip">Git</span>
-          <span class="chip">REST APIs</span>
-        `;
+        if (data.co_occurrences && data.co_occurrences.length > 0) {
+          container.innerHTML = `
+            <div style="width: 100%; font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; font-weight: 600;">
+              Industries and job postings requiring <strong>${skill}</strong> commonly co-require:
+            </div>
+            ${data.co_occurrences.map(co => {
+              const name = co.related_skill || co.skill;
+              return `<span class="chip" style="cursor: pointer;" title="Co-occurs in ${co.co_occurrence_count} postings" onclick="document.getElementById('cooccur-input').value='${name}'; lookupCooccurrence();">
+                ${name} <strong style="color: var(--accent); margin-left: 4px;">(${co.co_occurrence_count})</strong>
+              </span>`;
+            }).join('')}
+          `;
+        } else {
+          container.innerHTML = `<span style="color: var(--text-muted);">No direct co-occurring technologies found for "${skill}" in current job corpus.</span>`;
+        }
       } catch (e) {
         container.innerHTML = '<span style="color: #ef4444;">Lookup failed.</span>';
       }
@@ -1850,11 +2064,55 @@
       drawProgressChart();
     });
 
-    initTheme();
-    updateStudentDisplay();
-    checkHealth();
-    renderVerifiedChips();
-    generateRoadmap();
+    async function initApp() {
+      initTheme();
+      updateStudentDisplay();
+      checkHealth();
+      setupDagInteractivity();
+
+      // Attempt to restore persistent session from DuckDB
+      try {
+        const res = await fetch(`/api/v1/session/${encodeURIComponent(studentId)}`);
+        if (res.ok) {
+          const s = await res.json();
+          if (s && s.session_found) {
+            if (s.target_role) {
+              const roleSelect = document.getElementById('target-role-select');
+              if (roleSelect) {
+                // If the role is in the select, set it; otherwise add an option
+                let opt = Array.from(roleSelect.options).find(o => o.value.toLowerCase() === s.target_role.toLowerCase());
+                if (!opt) {
+                  opt = document.createElement('option');
+                  opt.value = s.target_role;
+                  opt.textContent = s.target_role;
+                  roleSelect.appendChild(opt);
+                }
+                roleSelect.value = opt.value;
+              }
+            }
+            if (Array.isArray(s.verified_skills) && s.verified_skills.length > 0) {
+              verifiedSkills = s.verified_skills;
+            }
+            if (s.overall_mastery !== undefined && s.overall_mastery !== null) {
+              const prof = document.getElementById('profiler-score');
+              const bar = document.getElementById('profiler-bar');
+              if (prof) prof.textContent = Math.round(s.overall_mastery * 100) + '%';
+              if (bar) bar.style.width = Math.round(s.overall_mastery * 100) + '%';
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Session restoration skipped:', e);
+      }
+
+      renderVerifiedChips();
+      generateRoadmap();
+      if (typeof loadStudentProgress === 'function') {
+        loadStudentProgress();
+      }
+    }
+
+    initApp();
   </script>
 
   <!-- Diagnostic Skill Survey Modal -->

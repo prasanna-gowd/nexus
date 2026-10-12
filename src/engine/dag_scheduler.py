@@ -14,15 +14,9 @@ logger = logging.getLogger(__name__)
 # Standard pedagogical prerequisite knowledge base.
 # Key: prerequisite skill -> Value: dependent skill (Key MUST be learned BEFORE Value)
 CURATED_PREREQUISITES: List[Tuple[str, str]] = [
-    # Programming fundamentals to advanced concepts / frameworks
-    ("Python", "Django"),
-    ("Python", "FastAPI"),
-    ("Python", "Flask"),
-    ("Python", "Pandas"),
-    ("Python", "NumPy"),
-    ("Python", "PyTorch"),
-    ("Python", "TensorFlow"),
-    ("Python", "scikit-learn"),
+    # Web Foundations & Frontend
+    ("HTML/CSS", "JavaScript"),
+    ("HTML/CSS", "React"),
     ("JavaScript", "TypeScript"),
     ("JavaScript", "React"),
     ("JavaScript", "Vue.js"),
@@ -30,10 +24,18 @@ CURATED_PREREQUISITES: List[Tuple[str, str]] = [
     ("JavaScript", "Node.js"),
     ("TypeScript", "Angular"),
     ("TypeScript", "Next.js"),
+    ("TypeScript", "React"),
     ("React", "Next.js"),
+
+    # Backend & Server-Side APIs
     ("Node.js", "Express.js"),
-    ("HTML/CSS", "JavaScript"),
-    ("HTML/CSS", "React"),
+    ("Node.js", "REST API"),
+    ("Node.js", "Docker"),
+    ("Python", "FastAPI"),
+    ("Python", "Django"),
+    ("Python", "Flask"),
+    ("Python", "REST API"),
+    ("FastAPI", "REST API"),
 
     # Data & Database hierarchies
     ("SQL", "PostgreSQL"),
@@ -41,34 +43,39 @@ CURATED_PREREQUISITES: List[Tuple[str, str]] = [
     ("SQL", "Database Design"),
     ("SQL", "Data Warehouse"),
     ("PostgreSQL", "Database Optimization"),
+    ("PostgreSQL", "Redis"),
 
-    # Data Science & ML hierarchies
+    # Data Science & Machine Learning
+    ("Python", "Pandas"),
+    ("Python", "NumPy"),
     ("Python", "Machine Learning"),
     ("Pandas", "Machine Learning"),
     ("NumPy", "Machine Learning"),
-    ("Machine Learning", "Deep Learning"),
     ("Machine Learning", "scikit-learn"),
+    ("Machine Learning", "Deep Learning"),
     ("Deep Learning", "PyTorch"),
     ("Deep Learning", "TensorFlow"),
     ("Deep Learning", "Natural Language Processing"),
     ("Deep Learning", "Computer Vision"),
     ("Natural Language Processing", "Large Language Models"),
 
-    # DevOps & Infrastructure
+    # Version Control, DevOps, Cloud & Containerization
+    ("Git", "CI/CD"),
+    ("Git", "Docker"),
     ("Linux", "Docker"),
     ("Linux", "Bash"),
-    ("Git", "CI/CD"),
     ("Docker", "Kubernetes"),
     ("Docker", "Microservices"),
+    ("Docker", "CI/CD"),
+    ("REST API", "Microservices"),
     ("CI/CD", "DevOps"),
     ("AWS", "Kubernetes"),
     ("AWS", "Terraform"),
     ("Cloud Platform", "Terraform"),
 
-    # General Systems
+    # Computer Science & Architecture Fundamentals
     ("Data Structures", "Algorithms"),
     ("Algorithms", "System Design"),
-    ("REST API", "Microservices"),
 ]
 
 
@@ -119,24 +126,27 @@ class PrerequisiteDAG:
     def compute_learning_trajectory(
         self,
         required_skills: List[str],
-        verified_skills: List[str]
-    ) -> List[Dict[str, Any]]:
+        verified_skills: List[str],
+        return_edges: bool = False
+    ) -> Any:
         """
-        Generates an ordered topological trajectory for missing skills.
+        Generates an ordered topological trajectory for missing skills with generation levels
+        and directed prerequisite edges.
 
         Args:
             required_skills: Skills needed for the role.
             verified_skills: Skills the student already has mastered.
+            return_edges: If True, returns a tuple (trajectory, dag_edges).
 
         Returns:
-            List of dicts containing ordered skills with their prerequisite status.
+            List of trajectory steps (or tuple of trajectory and dag_edges).
         """
         verified_set = {s.strip().lower() for s in verified_skills}
         
         # 1. Identify missing target skills
         missing_skills = [s for s in required_skills if s.strip().lower() not in verified_set]
         if not missing_skills:
-            return []
+            return ([], []) if return_edges else []
 
         # 2. Gather all missing skills and their necessary prerequisites
         all_needed_skills: Set[str] = set()
@@ -161,25 +171,86 @@ class PrerequisiteDAG:
         if not nx.is_directed_acyclic_graph(subgraph):
             cycles = list(nx.simple_cycles(subgraph))
             for cycle in cycles:
-                # Remove feedback edge
                 subgraph.remove_edge(cycle[-1], cycle[0])
 
-        # 5. Topological Sort
-        ordered_skills = list(nx.topological_sort(subgraph))
+        # 5. Topological Generations (Level Indexing)
+        levels: Dict[str, int] = {}
+        for lvl_idx, gen in enumerate(nx.topological_generations(subgraph)):
+            for s in gen:
+                levels[s] = lvl_idx
+
+        # Pedagogical tie-breaker priority for skills on the same level:
+        # Web & Foundations -> Languages -> Frameworks -> Databases -> APIs -> DevOps
+        domain_priority = {
+            "HTML/CSS": 1, "Git": 2, "Linux": 3, "SQL": 4, "Data Structures": 5,
+            "JavaScript": 10, "Python": 11, "TypeScript": 12, "Bash": 13,
+            "React": 20, "Vue.js": 21, "Angular": 22, "Node.js": 23, "FastAPI": 24, "Django": 25, "Flask": 26,
+            "PostgreSQL": 30, "MySQL": 31, "Redis": 32, "Database Design": 33, "Pandas": 34, "NumPy": 35,
+            "REST API": 40, "Express.js": 41, "Next.js": 42, "Machine Learning": 43, "Docker": 44,
+            "scikit-learn": 50, "PyTorch": 51, "TensorFlow": 52, "Deep Learning": 53,
+            "CI/CD": 60, "Kubernetes": 61, "AWS": 62, "Microservices": 63, "Terraform": 64
+        }
+
+        def sort_key(skill_name: str):
+            return (levels.get(skill_name, 0), domain_priority.get(skill_name, 90), skill_name)
+
+        ordered_skills = sorted(list(subgraph.nodes()), key=sort_key)
 
         # 6. Format trajectory output
         trajectory = []
         for idx, skill in enumerate(ordered_skills):
-            prereqs = [p for p in self.graph.predecessors(skill)] if skill in self.graph else []
+            prereqs = [p for p in subgraph.predecessors(skill)]
             trajectory.append({
                 "step": idx + 1,
                 "skill_name": skill,
                 "prerequisites": prereqs,
                 "is_target_skill": skill in missing_skills,
+                "level": levels.get(skill, 0),
                 "status": "pending"
             })
 
+        dag_edges = [{"source": u, "target": v} for u, v in subgraph.edges()]
+
+        if return_edges:
+            return trajectory, dag_edges
         return trajectory
+
+
+# Sensible, comprehensive curriculum definitions for core industry career roles
+ROLE_CURRICULUM = {
+    "full stack developer": [
+        "HTML/CSS", "JavaScript", "TypeScript", "React", "Node.js",
+        "REST API", "SQL", "PostgreSQL", "Git", "Docker"
+    ],
+    "full stack engineer": [
+        "HTML/CSS", "JavaScript", "TypeScript", "React", "Node.js",
+        "REST API", "SQL", "PostgreSQL", "Git", "Docker"
+    ],
+    "full stack": [
+        "HTML/CSS", "JavaScript", "TypeScript", "React", "Node.js",
+        "REST API", "SQL", "PostgreSQL", "Git", "Docker"
+    ],
+    "machine learning engineer": [
+        "Python", "SQL", "Pandas", "NumPy", "scikit-learn",
+        "PyTorch", "Docker", "Machine Learning"
+    ],
+    "data engineer": [
+        "Python", "SQL", "PostgreSQL", "Apache Spark", "Apache Kafka",
+        "Docker", "Linux", "Data Warehouse"
+    ],
+    "frontend developer": [
+        "HTML/CSS", "JavaScript", "TypeScript", "React", "Next.js",
+        "Git", "REST API"
+    ],
+    "backend developer": [
+        "Python", "SQL", "PostgreSQL", "FastAPI", "REST API",
+        "Redis", "Docker", "Linux", "Git"
+    ],
+    "devops engineer": [
+        "Linux", "Git", "Docker", "Kubernetes", "CI/CD",
+        "AWS", "Terraform"
+    ],
+}
 
 
 def perform_skill_gap_analysis(
@@ -190,6 +261,7 @@ def perform_skill_gap_analysis(
     """
     Core Skill-Gap Engine:
     Compares student's verified skills against target role requirements.
+    Ensures sensible, industry-standard prerequisite sequences.
     """
     from src.analytics.trends import MarketAnalytics
 
@@ -200,22 +272,25 @@ def perform_skill_gap_analysis(
     if role_skills_override:
         required_skill_names = role_skills_override
     else:
-        role_demand = analytics.get_skills_by_role(target_role, limit=12)
-        if role_demand:
-            required_skill_names = [item["skill_name"] for item in role_demand]
+        # Check standard curriculum first to guarantee sensible pedagogical sequencing
+        matched_curriculum_key = next((k for k in ROLE_CURRICULUM if k in target_role.lower()), None)
+        if matched_curriculum_key:
+            required_skill_names = list(ROLE_CURRICULUM[matched_curriculum_key])
+            # Enrich with real market demand signals if high-frequency skills exist in DB
+            try:
+                role_demand = analytics.get_skills_by_role(target_role, limit=10)
+                existing_lower = {s.lower() for s in required_skill_names}
+                for item in role_demand:
+                    s_name = item.get("skill_name", "").strip()
+                    if s_name and s_name.lower() not in existing_lower and item.get("demand_count", 0) >= 2:
+                        required_skill_names.append(s_name)
+                        existing_lower.add(s_name.lower())
+            except Exception:
+                pass
         else:
-            # Fallback default technical skills for the role
-            role_defaults = {
-                "machine learning engineer": ["Python", "SQL", "Pandas", "NumPy", "scikit-learn", "PyTorch", "Docker"],
-                "data engineer": ["Python", "SQL", "PostgreSQL", "Docker", "Apache Kafka", "Apache Spark", "Linux"],
-                "frontend developer": ["HTML/CSS", "JavaScript", "TypeScript", "React", "Next.js", "Git"],
-                "backend developer": ["Python", "PostgreSQL", "Docker", "REST API", "Redis", "Linux", "FastAPI"],
-                "full stack developer": ["JavaScript", "Python", "React", "PostgreSQL", "Docker", "Git", "REST API"],
-                "devops engineer": ["Linux", "Git", "Docker", "Kubernetes", "CI/CD", "AWS", "Terraform"],
-            }
-            matched_key = next((k for k in role_defaults if k in target_role.lower()), None)
-            if matched_key:
-                required_skill_names = role_defaults[matched_key]
+            role_demand = analytics.get_skills_by_role(target_role, limit=12)
+            if role_demand:
+                required_skill_names = [item["skill_name"] for item in role_demand]
             else:
                 top_general = analytics.get_top_skills(limit=8)
                 required_skill_names = [s["skill_name"] for s in top_general] or ["Python", "SQL", "Git", "Docker"]
@@ -223,9 +298,9 @@ def perform_skill_gap_analysis(
     matched_skills = [s for s in required_skill_names if s.strip().lower() in verified_lower]
     missing_skills = [s for s in required_skill_names if s.strip().lower() not in verified_lower]
 
-    # Compute topological DAG trajectory
+    # Compute topological DAG trajectory and edges
     dag = PrerequisiteDAG()
-    trajectory = dag.compute_learning_trajectory(missing_skills, student_skills)
+    trajectory, dag_edges = dag.compute_learning_trajectory(missing_skills, student_skills, return_edges=True)
 
     match_pct = round((len(matched_skills) / max(len(required_skill_names), 1)) * 100, 1)
 
@@ -237,6 +312,7 @@ def perform_skill_gap_analysis(
         "missing_skills": missing_skills,
         "total_required": len(required_skill_names),
         "ordered_trajectory": trajectory,
+        "dag_edges": dag_edges,
     }
 
 

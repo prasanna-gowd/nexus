@@ -25,6 +25,7 @@ class TrajectoryStep(BaseModel):
     skill_name: str
     prerequisites: List[str] = Field(default_factory=list)
     is_target_skill: bool = True
+    level: Optional[int] = 0
     status: str = "pending"
 
 
@@ -36,6 +37,7 @@ class GapAnalysisResponse(BaseModel):
     missing_skills: List[str]
     total_required: int
     ordered_trajectory: List[TrajectoryStep]
+    dag_edges: List[Dict[str, str]] = Field(default_factory=list)
 
 
 # --- Market Trends ---
@@ -105,6 +107,7 @@ class JobPostAnalyzeResponse(BaseModel):
     missing_skills: List[str]
     total_required: int
     ordered_trajectory: List[TrajectoryStep]
+    dag_edges: List[Dict[str, str]] = Field(default_factory=list)
 
 
 # --- Diagnostic Skill Survey ---
@@ -137,4 +140,5 @@ class SurveyEvaluateResponse(BaseModel):
     match_percentage: float
     missing_skills: List[str]
     ordered_trajectory: List[TrajectoryStep]
+    dag_edges: List[Dict[str, str]] = Field(default_factory=list)
     initial_feedback: str

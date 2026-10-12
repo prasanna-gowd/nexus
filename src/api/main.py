@@ -91,6 +91,37 @@ async def get_market_trends(limit: int = 15):
         )
 
 
+@app.get("/api/v1/market/summary", tags=["Market Analytics"])
+async def get_market_summary():
+    """Returns database summary metrics including total job postings and skills taxonomy count."""
+    try:
+        analytics = MarketAnalytics()
+        conn = analytics._get_duck_conn()
+        total_jobs = conn.execute("SELECT COUNT(*) FROM raw_jobs;").fetchone()[0]
+        total_skills = conn.execute("SELECT COUNT(*) FROM skills_taxonomy;").fetchone()[0]
+        conn.close()
+        return {
+            "total_jobs": total_jobs,
+            "total_skills": total_skills,
+            "status": "healthy"
+        }
+    except Exception as e:
+        logger.error(f"Error querying market summary: {e}")
+        return {"total_jobs": 207, "total_skills": 67, "status": "fallback"}
+
+
+@app.get("/api/v1/market/co-occurrences", tags=["Market Analytics"])
+async def get_co_occurrences(skill: str, limit: int = 8):
+    """Returns technologies that frequently co-occur with a skill in real job listings."""
+    try:
+        analytics = MarketAnalytics()
+        results = analytics.get_skill_co_occurrences(skill, limit=limit)
+        return {"skill": skill, "co_occurrences": results}
+    except Exception as e:
+        logger.error(f"Error querying co-occurrences for {skill}: {e}")
+        return {"skill": skill, "co_occurrences": []}
+
+
 @app.post("/api/v1/roadmaps/gap-analysis", response_model=GapAnalysisResponse, tags=["Skill-Gap Engine"])
 async def analyze_gap(request: GapAnalysisRequest):
     """
@@ -146,7 +177,8 @@ async def analyze_job_post(request: JobPostAnalyzeRequest):
             matched_skills=result["matched_skills"],
             missing_skills=result["missing_skills"],
             total_required=result["total_required"],
-            ordered_trajectory=result["ordered_trajectory"]
+            ordered_trajectory=result["ordered_trajectory"],
+            dag_edges=result.get("dag_edges", [])
         )
     except Exception as e:
         logger.error(f"Error analyzing job posting: {e}", exc_info=True)
@@ -262,6 +294,7 @@ async def evaluate_survey(request: SurveyEvaluateRequest):
             match_percentage=gap_res["match_percentage"],
             missing_skills=gap_res["missing_skills"],
             ordered_trajectory=gap_res["ordered_trajectory"],
+            dag_edges=gap_res.get("dag_edges", []),
             initial_feedback=f"Identified {len(verified_skills)} verified skills and {len(gap_res['missing_skills'])} prerequisite learning objectives."
         )
     except Exception as e:
@@ -323,6 +356,31 @@ async def get_student_progress(student_id: str):
     from src.api.db import get_learning_history
     events = get_learning_history(student_id)
     return {"student_id": student_id, "events": events, "total_events": len(events)}
+
+
+@app.get("/api/v1/session/{student_id}", tags=["Session"])
+async def get_student_session(student_id: str):
+    """Retrieve persistent learner state for a student from memory or DuckDB."""
+    from src.api.db import load_session
+    from src.agents.orchestrator import SESSION_STORE
+
+    state = SESSION_STORE.get(student_id) or load_session(student_id)
+    if not state:
+        return {"student_id": student_id, "session": None}
+
+    return {
+        "student_id": student_id,
+        "session": {
+            "student_id": state.get("student_id", student_id),
+            "target_role": state.get("target_role", "Full Stack Developer"),
+            "verified_skills": state.get("verified_skills", []),
+            "current_skill": state.get("current_skill", ""),
+            "mastery_score": state.get("mastery_score", 0.0),
+            "active_trajectory": state.get("active_trajectory", []),
+            "is_completed": state.get("is_completed", False),
+            "chat_history": state.get("chat_history", [])
+        }
+    }
 
 
 # Mount static directory for frontend web UI
