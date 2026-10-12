@@ -15,6 +15,7 @@ from src.agents.nodes import (
     cognitive_profiler_node,
     MASTERY_THRESHOLD
 )
+from src.api.db import save_session, load_session, record_learning_event
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def run_agent_turn(
         verified_skills = []
 
     # 1. Retrieve or initialize session state
-    if reset_session or student_id not in SESSION_STORE:
+    if reset_session:
         logger.info(f"Initializing new learning session for {student_id} (Role: {target_role})")
         state: LearnerState = {
             "student_id": student_id,
@@ -110,17 +111,46 @@ def run_agent_turn(
             "pending_response": False,
             "is_completed": False
         }
-    else:
+    elif student_id in SESSION_STORE:
         state = SESSION_STORE[student_id]
         # Allow updating verified skills or role if supplied
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
         for s in verified_skills:
-            if s not in state["verified_skills"]:
+            if s not in state.get("verified_skills", []):
                 state["verified_skills"].append(s)
+    elif (db_session := load_session(student_id)):
+        logger.info(f"Restored session for {student_id} from persistent DuckDB storage")
+        state = db_session
+        SESSION_STORE[student_id] = state
+        if target_role and target_role != state.get("target_role"):
+            state["target_role"] = target_role
+        for s in verified_skills:
+            if s not in state.get("verified_skills", []):
+                state["verified_skills"].append(s)
+    else:
+        logger.info(f"Initializing new learning session for {student_id} (Role: {target_role})")
+        state: LearnerState = {
+            "student_id": student_id,
+            "target_role": target_role,
+            "verified_skills": list(verified_skills),
+            "active_trajectory": [],
+            "current_skill": "",
+            "chat_history": [],
+            "mastery_score": 0.0,
+            "attempt_count": 0,
+            "question_index": 0,
+            "pending_response": False,
+            "is_completed": False
+        }
 
     # 2. Process Turn
     if user_message and user_message.strip():
+        # Ensure active trajectory and current_skill are initialized if empty
+        if not state.get("current_skill"):
+            roadmap_updates = roadmap_agent_node(state)
+            state.update(roadmap_updates)
+
         # Human provided a response -> Enter via Cognitive Profiler
         logger.info(f"Processing student message: '{user_message[:60]}...'")
         state["chat_history"].append({"role": "user", "content": user_message.strip()})
@@ -129,6 +159,12 @@ def run_agent_turn(
         profiler_updates = cognitive_profiler_node(state)
         eval_score = profiler_updates.get("mastery_score", 0.0)
         state.update(profiler_updates)
+
+        # Step A.1: Record learning event for progress analytics
+        current_skill = state.get("current_skill", "")
+        if current_skill:
+            event_type = "mastery_verified" if eval_score >= MASTERY_THRESHOLD else "evaluation_attempt"
+            record_learning_event(student_id, current_skill, eval_score, event_type)
 
         # Step B: Route conditionally based on evaluation
         next_node = mastery_router(state)
@@ -152,6 +188,7 @@ def run_agent_turn(
 
     # 3. Persist updated session
     SESSION_STORE[student_id] = state
+    save_session(student_id, state)
 
     # Extract latest agent message
     latest_agent_msg = ""

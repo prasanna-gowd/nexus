@@ -5,10 +5,13 @@ import os
 import logging
 from typing import Dict, Any
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from src.api.schemas import (
     HealthResponse,
@@ -39,10 +42,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from src.api.db import init_session_tables
+init_session_tables()
+
 # Enable CORS for local dev / frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -240,6 +250,10 @@ async def evaluate_survey(request: SurveyEvaluateRequest):
             "is_completed": len(gap_res["ordered_trajectory"]) == 0
         }
         SESSION_STORE[request.student_id] = state
+        from src.api.db import save_session, record_learning_event
+        save_session(request.student_id, state)
+        for s in verified_skills:
+            record_learning_event(request.student_id, s, 1.0, "survey_verified")
 
         return SurveyEvaluateResponse(
             student_id=request.student_id,
@@ -279,7 +293,8 @@ async def retrieve_job_context(request: ContextRetrieveRequest):
 
 
 @app.post("/api/v1/tutor/chat", response_model=AgentChatResponse, tags=["Multi-Agent Tutoring"])
-async def tutor_chat(request: AgentChatRequest):
+@limiter.limit("30/minute")
+async def tutor_chat(request: Request, chat_req: AgentChatRequest):
     """
     Interactive endpoint for the LangGraph multi-agent tutoring loop.
     Maintains persistent learner state across conversation turns.
@@ -288,11 +303,11 @@ async def tutor_chat(request: AgentChatRequest):
         from src.agents.orchestrator import run_agent_turn
 
         result = run_agent_turn(
-            student_id=request.student_id,
-            target_role=request.target_role,
-            verified_skills=request.verified_skills,
-            user_message=request.user_message,
-            reset_session=request.reset_session
+            student_id=chat_req.student_id,
+            target_role=chat_req.target_role,
+            verified_skills=chat_req.verified_skills,
+            user_message=chat_req.user_message,
+            reset_session=chat_req.reset_session
         )
         return AgentChatResponse(**result)
     except Exception as e:
@@ -301,6 +316,13 @@ async def tutor_chat(request: AgentChatRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Multi-agent tutoring turn failed: {str(e)}"
         )
+
+
+@app.get("/api/v1/progress/{student_id}", tags=["Progress"])
+async def get_student_progress(student_id: str):
+    from src.api.db import get_learning_history
+    events = get_learning_history(student_id)
+    return {"student_id": student_id, "events": events, "total_events": len(events)}
 
 
 # Mount static directory for frontend web UI

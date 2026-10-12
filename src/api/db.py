@@ -150,3 +150,116 @@ def retrieve_semantic_job_context(skill_name: str, limit: int = 3) -> Dict[str, 
         }],
         "is_fallback": True
     }
+
+
+def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
+    """Get a DuckDB connection, creating parent directory if necessary."""
+    from pathlib import Path
+    Path(DUCKDB_PATH).parent.mkdir(parents=True, exist_ok=True)
+    return duckdb.connect(DUCKDB_PATH)
+
+
+def init_session_tables():
+    """Create session and learning event tables in DuckDB if they don't exist."""
+    try:
+        con = get_duckdb_connection()
+        # Create sequence if not exists
+        try:
+            con.execute("CREATE SEQUENCE IF NOT EXISTS learning_event_seq START 1")
+        except:
+            pass
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS learner_sessions (
+                student_id TEXT PRIMARY KEY,
+                state_json TEXT NOT NULL,
+                target_role TEXT DEFAULT '',
+                skills_count INTEGER DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS learning_events (
+                id INTEGER DEFAULT (nextval('learning_event_seq')),
+                student_id TEXT NOT NULL,
+                skill_name TEXT NOT NULL,
+                mastery_score REAL NOT NULL,
+                event_type TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        con.close()
+    except Exception as e:
+        logger.warning(f"Failed to init session tables: {e}")
+
+
+def save_session(student_id: str, state: dict):
+    """Persist learner session state to DuckDB."""
+    import json
+    try:
+        con = get_duckdb_connection()
+        state_json = json.dumps(state, default=str)
+        target_role = state.get('target_role', '')
+        skills_count = len(state.get('verified_skills', []))
+        con.execute("""
+            INSERT OR REPLACE INTO learner_sessions (student_id, state_json, target_role, skills_count, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, [student_id, state_json, target_role, skills_count])
+        con.close()
+    except Exception as e:
+        logger.warning(f"Failed to save session: {e}")
+
+
+def load_session(student_id: str) -> dict:
+    """Load learner session state from DuckDB. Returns empty dict if not found."""
+    import json
+    try:
+        con = get_duckdb_connection()
+        result = con.execute(
+            "SELECT state_json FROM learner_sessions WHERE student_id = ?",
+            [student_id]
+        ).fetchone()
+        con.close()
+        if result:
+            return json.loads(result[0])
+    except Exception as e:
+        logger.warning(f"Failed to load session: {e}")
+    return {}
+
+
+def record_learning_event(student_id: str, skill_name: str, mastery_score: float, event_type: str):
+    """Record a learning event for progress analytics."""
+    try:
+        con = get_duckdb_connection()
+        con.execute("""
+            INSERT INTO learning_events (student_id, skill_name, mastery_score, event_type, created_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, [student_id, skill_name, mastery_score, event_type])
+        con.close()
+    except Exception as e:
+        logger.warning(f"Failed to record learning event: {e}")
+
+
+def get_learning_history(student_id: str) -> list:
+    """Retrieve all learning events for a student, ordered by time."""
+    try:
+        con = get_duckdb_connection()
+        results = con.execute("""
+            SELECT skill_name, mastery_score, event_type, created_at
+            FROM learning_events
+            WHERE student_id = ?
+            ORDER BY created_at ASC
+        """, [student_id]).fetchall()
+        con.close()
+        return [
+            {
+                "skill_name": r[0],
+                "mastery_score": r[1],
+                "event_type": r[2],
+                "timestamp": str(r[3])
+            }
+            for r in results
+        ]
+    except Exception as e:
+        logger.warning(f"Failed to get learning history: {e}")
+        return []
+

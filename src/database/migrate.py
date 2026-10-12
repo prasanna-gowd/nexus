@@ -9,7 +9,12 @@ import os
 import sys
 import uuid
 import logging
-from datetime import datetime
+import datetime as _dt_module
+from datetime import datetime as _datetime, timezone
+
+class datetime(_datetime):
+    UTC = getattr(_dt_module, "UTC", timezone.utc)
+
 from pathlib import Path
 from typing import List, Optional
 
@@ -94,13 +99,13 @@ class VectorEmbeddingGenerator:
 
 def parse_date_safely(date_str: Optional[str]) -> Optional[datetime]:
     if not date_str:
-        return datetime.utcnow()
+        return datetime.now(datetime.UTC)
     for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
         try:
             return datetime.strptime(date_str[:19], fmt)
         except (ValueError, TypeError):
             continue
-    return datetime.utcnow()
+    return datetime.now(datetime.UTC)
 
 
 def run_migration(duckdb_path: str = DUCKDB_PATH) -> dict:

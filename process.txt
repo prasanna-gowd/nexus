@@ -235,3 +235,32 @@ Repository: C:\Users\prasa\Desktop\capstone
   * Committed and pushed all updates to GitHub repository:
     https://github.com/prasanna-gowd/nexus (branch `main`).
 ================================================================================
+
+11. PLATFORM ARCHITECTURE & UI IMPROVEMENTS
+--------------------------------------------------------------------------------
+- Gemini LLM Integration:
+  * Installed `langchain-google-genai` and added `GOOGLE_API_KEY` to `.env` / `.env.example`.
+  * Updated `get_llm()` in `src/agents/nodes.py` to prioritize `gemini-2.0-flash` (free tier)
+    before falling back to OpenAI GPT-4o or local neural simulator.
+- Persistent Session & Event Storage in DuckDB:
+  * Created `learner_sessions` and `learning_events` tables in DuckDB (`src/api/db.py`).
+  * Implemented `save_session()`, `load_session()`, and `record_learning_event()`.
+  * Sessions and learning evaluations now persist across server restarts.
+- Progress Analytics API:
+  * Added `GET /api/v1/progress/{student_id}` returning student learning events audit trail.
+  * Added integration tests in `tests/test_api.py`.
+- Security & Production Polish:
+  * Locked down CORS in `src/api/main.py`.
+  * Added rate limiting (`slowapi`) on `/api/v1/tutor/chat` endpoint.
+  * Fixed `datetime.utcnow()` deprecation across database migration scripts.
+  * Added rotating file logger writing to `logs/nexus.log` in `run_app.py`.
+  * Generated standard `Dockerfile` targeting Python 3.12-slim.
+- Frontend UI Overhaul (`static/index.html`):
+  * Added new Tab 4: "📈 My Progress & Analytics" with KPI summary cards.
+  * Built interactive HTML5 Canvas longitudinal mastery trajectory line chart.
+  * Added chronological learning events table with status badges and score gauges.
+  * Added "📥 Download Learning Report (.md)" for student portfolio export.
+  * Added persistent student identity via `localStorage` with a switcher modal.
+  * Added dark / light theme toggle (`🌙 Dark` / `☀️ Light`) with saved preference.
+  * Added mobile-responsive grid layout rules.
+================================================================================

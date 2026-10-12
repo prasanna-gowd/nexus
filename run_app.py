@@ -19,6 +19,12 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
+os.makedirs('logs', exist_ok=True)
+from logging.handlers import RotatingFileHandler
+file_handler = RotatingFileHandler('logs/nexus.log', maxBytes=5*1024*1024, backupCount=3)
+file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+logging.getLogger().addHandler(file_handler)
+
 logger = logging.getLogger("nexus.app")
 
 HOST = os.getenv("APP_HOST", "127.0.0.1")

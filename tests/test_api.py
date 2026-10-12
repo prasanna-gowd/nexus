@@ -75,3 +75,13 @@ def test_tutor_chat_endpoint():
     assert data["student_id"] == "TEST-API-STU"
     assert len(data["agent_message"]) > 0
     assert data["current_skill"] != ""
+
+
+def test_progress_endpoint():
+    response = client.get("/api/v1/progress/TEST-API-STU")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["student_id"] == "TEST-API-STU"
+    assert "events" in data
+    assert "total_events" in data
+

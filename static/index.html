@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>" type="image/svg+xml">
+  <meta property="og:title" content="NEXUS - Autonomous Learning Platform">
+  <meta property="og:description" content="AI-powered skill gap analysis, prerequisite DAG scheduling, and adaptive Socratic tutoring.">
+  <meta name="theme-color" content="#6366f1">
   <title>NEXUS — Autonomous Multi-Agent Learning Ecosystem</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -463,6 +467,95 @@
       color: #38bdf8;
       font-size: 0.85em;
     }
+
+    /* Light Theme Overrides */
+    body.light-theme {
+      --bg-dark: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f1f5f9;
+      --border: #e2e8f0;
+      --border-focus: #4f46e5;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+    }
+    body.light-theme header {
+      background: rgba(255, 255, 255, 0.95);
+    }
+    body.light-theme input, body.light-theme textarea, body.light-theme select {
+      background: #f8fafc !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    body.light-theme .step-item, body.light-theme .survey-q, body.light-theme .gauge-card, 
+    body.light-theme #velocity-box, body.light-theme .chat-box, body.light-theme .chat-input-area,
+    body.light-theme #dag-canvas-container, body.light-theme .stat-card {
+      background: #f8fafc !important;
+    }
+    body.light-theme .message.agent {
+      background: #f1f5f9 !important;
+      border-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+
+    /* Progress & Analytics Tab Styling */
+    .grid-progress {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .stat-card .stat-val {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-card .stat-lbl {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .progress-split-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 900px) {
+      .grid-roadmap, .grid-tutor, .grid-market, .progress-split-grid {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+      }
+      header {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+        padding: 0.85rem 1rem;
+      }
+      .nav-tabs {
+        overflow-x: auto;
+        width: 100%;
+        padding-bottom: 0.25rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -481,11 +574,19 @@
       <button class="tab-btn active" onclick="switchTab('roadmap')">🗺️ Skill Roadmap</button>
       <button class="tab-btn" onclick="switchTab('tutor')">🎓 Socratic Tutoring</button>
       <button class="tab-btn" onclick="switchTab('market')">📊 Market Intelligence</button>
+      <button class="tab-btn" onclick="switchTab('progress')">📈 My Progress</button>
     </div>
 
-    <div class="health-pill">
-      <span class="status-dot" id="health-dot"></span>
-      <span id="health-text">API Live (DuckDB)</span>
+    <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+      <button id="theme-btn" class="btn btn-secondary" onclick="toggleTheme()" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 20px;">🌙 Dark</button>
+      <div class="health-pill" onclick="promptSwitchLearner()" style="cursor: pointer;" title="Learner ID (Click to switch or rename)">
+        <span style="color: var(--accent);">👤</span>
+        <span id="header-student-id">STU-...</span>
+      </div>
+      <div class="health-pill">
+        <span class="status-dot" id="health-dot"></span>
+        <span id="health-text">API Live (DuckDB)</span>
+      </div>
     </div>
   </header>
 
@@ -723,12 +824,110 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB 4: MY PROGRESS & ANALYTICS -->
+    <div id="tab-progress" class="tab-content grid-progress">
+      <!-- Summary KPIs -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-lbl">Learner Identity</div>
+          <div class="stat-val" style="font-size: 1.15rem; color: var(--primary-light); display: flex; align-items: center; justify-content: space-between;">
+            <span id="progress-student-id">STU-...</span>
+            <button class="btn btn-secondary" onclick="promptSwitchLearner()" style="padding: 2px 8px; font-size: 0.72rem;">Switch</button>
+          </div>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Persisted securely in DuckDB & browser</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Verified Skills Mastered</div>
+          <div class="stat-val" id="progress-verified-count">0</div>
+          <span style="font-size: 0.72rem; color: var(--success);">Prerequisites validated</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Interactive Learning Events</div>
+          <div class="stat-val" id="progress-events-count">0</div>
+          <span style="font-size: 0.72rem; color: var(--accent);">Attempts & diagnostic checkpoints</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Average Mastery Score</div>
+          <div class="stat-val" id="progress-avg-mastery">0%</div>
+          <span style="font-size: 0.72rem; color: var(--warning);">Cognitive Profiler benchmark</span>
+        </div>
+      </div>
+
+      <!-- Main Visual Analytics Split -->
+      <div class="progress-split-grid">
+        <!-- Left: Mastery Progression Chart -->
+        <div class="card">
+          <div class="card-title">
+            <span>📈 Longitudinal Mastery Trajectory</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Chronological score trend</span>
+          </div>
+          <div style="position: relative; width: 100%; height: 260px; background: #090d16; border-radius: 10px; border: 1px solid var(--border); padding: 0.75rem; display: flex; align-items: center; justify-content: center;">
+            <canvas id="progress-chart-canvas" width="600" height="240" style="width: 100%; height: 100%;"></canvas>
+            <div id="chart-empty-msg" style="display: none; position: absolute; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+              No learning attempts recorded yet.<br>Complete a Socratic question or survey to see your progression!
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Actions & Report Export -->
+        <div class="card" style="justify-content: space-between;">
+          <div>
+            <h2 class="card-title">Learning Portfolio & Export</h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.45;">
+              Download a comprehensive, verifiable summary of your mastered skills, roadmap progress, and cognitive evaluation scores.
+            </p>
+            <button class="btn" style="width: 100%; margin-bottom: 0.75rem;" onclick="exportLearningReport()">
+              📥 Download Learning Report (.md)
+            </button>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="openSurvey()">
+              📋 Retake Diagnostic Survey
+            </button>
+          </div>
+          <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 0.85rem; margin-top: 1rem;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: #818cf8; margin-bottom: 0.25rem;">Storage Architecture:</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
+              Sessions and evaluation metrics persist in embedded DuckDB tables (<code>learner_sessions</code> & <code>learning_events</code>).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chronological Learning History Table -->
+      <div class="card">
+        <div class="card-title">
+          <span>📜 Learning Events Audit Trail</span>
+          <button class="btn btn-secondary" onclick="loadStudentProgress()" style="padding: 2px 10px; font-size: 0.75rem;">↻ Refresh</button>
+        </div>
+        <div style="overflow-x: auto; max-height: 380px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.84rem; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">
+                <th style="padding: 0.6rem 0.8rem;">Timestamp</th>
+                <th style="padding: 0.6rem 0.8rem;">Skill / Topic</th>
+                <th style="padding: 0.6rem 0.8rem;">Event Type</th>
+                <th style="padding: 0.6rem 0.8rem;">Mastery Score</th>
+                <th style="padding: 0.6rem 0.8rem;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="progress-events-tbody">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                  Loading your learning events from DuckDB...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
     let verifiedSkills = ['Python'];
     let currentTrajectory = [];
-    let studentId = 'STU-' + Math.floor(1000 + Math.random() * 9000);
+    let studentId = localStorage.getItem('nexus_student_id') || ('STU-' + Math.floor(1000 + Math.random() * 9000));
+    localStorage.setItem('nexus_student_id', studentId);
 
     // System Health Status Check
     async function checkHealth() {
@@ -850,6 +1049,7 @@
 
       if (tabId === 'market') loadMarketTrends();
       if (tabId === 'roadmap') drawDAG();
+      if (tabId === 'progress') loadStudentProgress();
     }
 
     function setRoadmapMode(mode) {
@@ -1124,6 +1324,10 @@
           fetchContextForSkill(data.current_skill);
         }
 
+        if (typeof loadStudentProgress === 'function') {
+          loadStudentProgress();
+        }
+
       } catch (e) {
         document.getElementById('chat-messages').innerHTML += `
           <div class="message agent" style="border-color: #ef4444; color: #ef4444;">
@@ -1243,6 +1447,7 @@
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
         renderTrajectorySteps(currentTrajectory);
         drawDAG(currentTrajectory);
+        if (typeof loadStudentProgress === 'function') loadStudentProgress();
 
         closeSurvey();
         alert(`🎉 Survey Evaluated!\n${data.initial_feedback}\n\nYour customized prerequisite map has been constructed!`);
@@ -1361,7 +1566,292 @@
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    window.addEventListener('resize', () => drawDAG());
+    // --- Theme Management ---
+    function initTheme() {
+      const saved = localStorage.getItem('nexus_theme');
+      if (saved === 'light') {
+        document.body.classList.add('light-theme');
+        const btn = document.getElementById('theme-btn');
+        if (btn) btn.textContent = '☀️ Light';
+      }
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('light-theme');
+      const isLight = document.body.classList.contains('light-theme');
+      localStorage.setItem('nexus_theme', isLight ? 'light' : 'dark');
+      const btn = document.getElementById('theme-btn');
+      if (btn) btn.textContent = isLight ? '☀️ Light' : '🌙 Dark';
+      drawDAG();
+      drawProgressChart();
+    }
+
+    // --- Learner Profile Persistence ---
+    function updateStudentDisplay() {
+      const b1 = document.getElementById('header-student-id');
+      if (b1) b1.textContent = studentId;
+      const b2 = document.getElementById('progress-student-id');
+      if (b2) b2.textContent = studentId;
+    }
+
+    function promptSwitchLearner() {
+      const current = studentId;
+      const entered = prompt("Enter Student ID to switch or resume learner profile:", current);
+      if (entered && entered.trim() && entered.trim() !== current) {
+        studentId = entered.trim();
+        localStorage.setItem('nexus_student_id', studentId);
+        updateStudentDisplay();
+        loadStudentProgress();
+        generateRoadmap();
+      }
+    }
+
+    // --- Progress Analytics & History ---
+    let currentLearningEvents = [];
+
+    async function loadStudentProgress() {
+      const tbody = document.getElementById('progress-events-tbody');
+      updateStudentDisplay();
+      const verifiedCount = document.getElementById('progress-verified-count');
+      if (verifiedCount) verifiedCount.textContent = verifiedSkills.length;
+
+      try {
+        const res = await fetch(`/api/v1/progress/${studentId}`);
+        const data = await res.json();
+        currentLearningEvents = data.events || [];
+
+        // Update KPIs
+        const evCount = document.getElementById('progress-events-count');
+        if (evCount) evCount.textContent = currentLearningEvents.length;
+
+        if (currentLearningEvents.length > 0) {
+          const totalScore = currentLearningEvents.reduce((acc, ev) => acc + (ev.mastery_score || 0), 0);
+          const avg = Math.round((totalScore / currentLearningEvents.length) * 100);
+          const avgEl = document.getElementById('progress-avg-mastery');
+          if (avgEl) avgEl.textContent = avg + '%';
+        } else {
+          const avgEl = document.getElementById('progress-avg-mastery');
+          if (avgEl) avgEl.textContent = '0%';
+        }
+
+        // Render events table
+        if (!tbody) return;
+        if (currentLearningEvents.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                No learning events recorded yet for <strong>${studentId}</strong>.<br>
+                Complete a Socratic question or submit a diagnostic survey to record your audit trail!
+              </td>
+            </tr>
+          `;
+        } else {
+          tbody.innerHTML = currentLearningEvents.slice().reverse().map(ev => {
+            const score = ev.mastery_score || 0;
+            const pct = Math.round(score * 100);
+            const isMastered = score >= 0.8;
+            const scoreColor = isMastered ? 'var(--success)' : (score >= 0.5 ? 'var(--warning)' : 'var(--danger)');
+            const typeBadge = ev.event_type === 'mastery_verified'
+              ? '<span style="color: #34d399; background: rgba(16,185,129,0.15); padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Verified</span>'
+              : '<span style="color: #818cf8; background: rgba(99,102,241,0.15); padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Attempt</span>';
+
+            const timeStr = ev.timestamp ? ev.timestamp.split('.')[0] : 'Just now';
+
+            return `
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 0.75rem 0.8rem; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">${timeStr}</td>
+                <td style="padding: 0.75rem 0.8rem; font-weight: 700;">${escapeHtml(ev.skill_name)}</td>
+                <td style="padding: 0.75rem 0.8rem;">${typeBadge}</td>
+                <td style="padding: 0.75rem 0.8rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 70px; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden;">
+                      <div style="width: ${pct}%; height: 100%; background: ${scoreColor};"></div>
+                    </div>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: ${scoreColor}; font-weight: 700;">${pct}%</span>
+                  </div>
+                </td>
+                <td style="padding: 0.75rem 0.8rem; font-size: 0.75rem;">
+                  ${isMastered ? '<span style="color: var(--success);">✅ Goal Passed</span>' : '<span style="color: var(--warning);">🔄 Scaffolding</span>'}
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        drawProgressChart();
+      } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="color: #ef4444; padding: 1.5rem; text-align: center;">Failed to load events: ${e.message}</td></tr>`;
+      }
+    }
+
+    function drawProgressChart() {
+      const canvas = document.getElementById('progress-chart-canvas');
+      const emptyMsg = document.getElementById('chart-empty-msg');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      if (!currentLearningEvents || currentLearningEvents.length === 0) {
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        return;
+      }
+      if (emptyMsg) emptyMsg.style.display = 'none';
+
+      const padLeft = 45;
+      const padRight = 30;
+      const padTop = 30;
+      const padBottom = 40;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+
+      const isLight = document.body.classList.contains('light-theme');
+      const gridColor = isLight ? '#e2e8f0' : '#1e293b';
+      const textColor = isLight ? '#64748b' : '#94a3b8';
+
+      // Grid benchmark lines
+      [0, 0.5, 0.8, 1.0].forEach(val => {
+        const y = padTop + chartH - (val * chartH);
+        ctx.strokeStyle = val === 0.8 ? 'rgba(16, 185, 129, 0.4)' : gridColor;
+        ctx.lineWidth = val === 0.8 ? 1.5 : 1;
+        ctx.setLineDash(val === 0.8 ? [4, 4] : []);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(W - padRight, y);
+        ctx.stroke();
+
+        ctx.fillStyle = val === 0.8 ? '#10b981' : textColor;
+        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText((val * 100) + '%', padLeft - 8, y + 3);
+      });
+      ctx.setLineDash([]);
+
+      const events = currentLearningEvents;
+      const points = events.map((ev, i) => {
+        const x = events.length === 1
+          ? padLeft + chartW / 2
+          : padLeft + (i / (events.length - 1)) * chartW;
+        const y = padTop + chartH - ((ev.mastery_score || 0) * chartH);
+        return { x, y, score: ev.mastery_score || 0, skill: ev.skill_name };
+      });
+
+      // Gradient under curve
+      if (points.length > 1) {
+        const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+        grad.addColorStop(0, 'rgba(99, 102, 241, 0.35)');
+        grad.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.lineTo(points[points.length - 1].x, padTop + chartH);
+        ctx.lineTo(points[0].x, padTop + chartH);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      // Connecting line
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      points.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.stroke();
+
+      // Points and skill labels
+      points.forEach((pt, i) => {
+        ctx.fillStyle = pt.score >= 0.8 ? '#10b981' : '#6366f1';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = isLight ? '#ffffff' : '#090d16';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = textColor;
+        ctx.font = '9px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        const label = pt.skill.length > 11 ? pt.skill.slice(0, 10) + '…' : pt.skill;
+        ctx.fillText(label, pt.x, H - 12);
+      });
+    }
+
+    function exportLearningReport() {
+      const role = document.getElementById('target-role-input').value.trim() || 'Machine Learning Engineer';
+      const matchPct = document.getElementById('match-pct-text').textContent || '0%';
+      const date = new Date().toISOString().split('T')[0];
+
+      let md = `# NEXUS — Autonomous Learning Platform Report\n\n`;
+      md += `- **Learner ID:** ${studentId}\n`;
+      md += `- **Date:** ${date}\n`;
+      md += `- **Target Role:** ${role}\n`;
+      md += `- **Readiness Match:** ${matchPct}\n`;
+      md += `- **Verified Skills Count:** ${verifiedSkills.length}\n\n`;
+
+      md += `## 1. Verified & Mastered Competencies (${verifiedSkills.length})\n`;
+      if (verifiedSkills.length === 0) {
+        md += `- None verified yet.\n\n`;
+      } else {
+        verifiedSkills.forEach(s => { md += `- [x] ${s}\n`; });
+        md += `\n`;
+      }
+
+      md += `## 2. Active Prerequisite Roadmap Trajectory (${currentTrajectory.length} Steps Remaining)\n`;
+      if (currentTrajectory.length === 0) {
+        md += `- 🎉 All prerequisite skills mastered for target role!\n\n`;
+      } else {
+        currentTrajectory.forEach((t, i) => {
+          const prereqs = t.prerequisites && t.prerequisites.length ? ` (Requires: ${t.prerequisites.join(', ')})` : '';
+          md += `${i + 1}. **${t.skill_name}**${prereqs}\n`;
+        });
+        md += `\n`;
+      }
+
+      md += `## 3. Learning Event History (${currentLearningEvents.length} Recorded)\n`;
+      if (currentLearningEvents.length === 0) {
+        md += `- No events recorded yet.\n\n`;
+      } else {
+        md += `| Date | Skill | Type | Mastery Score |\n|---|---|---|---|\n`;
+        currentLearningEvents.forEach(ev => {
+          const pct = Math.round((ev.mastery_score || 0) * 100);
+          md += `| ${ev.timestamp ? ev.timestamp.split('.')[0] : 'N/A'} | ${ev.skill_name} | ${ev.event_type} | ${pct}% |\n`;
+        });
+        md += `\n`;
+      }
+
+      md += `## 4. Verification Metadata\n`;
+      md += `- **Persistence Engine:** DuckDB (tables: \`learner_sessions\`, \`learning_events\`)\n`;
+      md += `- **Pedagogy:** LangGraph Multi-Agent Socratic Tutoring with Gemini 2.0 / OpenAI / Neural Simulator\n`;
+
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nexus_report_${studentId}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    window.addEventListener('resize', () => {
+      drawDAG();
+      drawProgressChart();
+    });
+
+    initTheme();
+    updateStudentDisplay();
     checkHealth();
     renderVerifiedChips();
     generateRoadmap();

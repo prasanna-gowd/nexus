@@ -20,12 +20,23 @@ from src.agents.nexus_tools import analyze_student_skill_gap, fetch_real_world_c
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 MASTERY_THRESHOLD = float(os.getenv("MASTERY_THRESHOLD", "0.8"))
 
 
 def get_llm():
-    """Initializes ChatOpenAI if credentials exist; otherwise returns None."""
+    """Initializes LLM: tries Gemini first, then OpenAI, then returns None for local fallback."""
+    if GOOGLE_API_KEY:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            return ChatGoogleGenerativeAI(
+                model="gemini-2.0-flash",
+                temperature=0.3,
+                google_api_key=GOOGLE_API_KEY
+            )
+        except Exception as e:
+            logger.warning(f"Failed to initialize Gemini: {e}")
     if OPENAI_API_KEY:
         try:
             from langchain_openai import ChatOpenAI
