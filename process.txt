@@ -215,4 +215,23 @@ Repository: C:\Users\prasa\Desktop\capstone
   * Added 'Paste Job Post' mode to Tab 1 with real-time NLP skill extraction.
   * Added 'Take Diagnostic Skill Survey' modal with interactive assessment levels.
   * Added question tracking, 'Next Question', and 'Next Skill' controls to Tab 2.
+
+10. MULTI-SKILL BATCH INGESTION & UI ROADMAP SYNC
+--------------------------------------------------------------------------------
+- Problem Addressed:
+  * User reported inability to add multiple skills at once in the frontend.
+- Root Cause Identified:
+  * The frontend JavaScript handler previously only accepted single string entries
+    and was missing batch tokenization logic for comma/semicolon-separated lists.
+- Implemented Batch Skill Parser:
+  * Input field now accepts multiple skills delimited by commas, semicolons, or
+    newlines (e.g. `Python, Docker, SQL, React, FastAPI`).
+  * Trims whitespace, removes empty tokens, and deduplicates against existing skills.
+  * Added 8 quick-add skill pills (+ Python, + Docker, + SQL, + PostgreSQL, + React,
+    + AWS, + Git, + FastAPI) and a 'Clear All' button for instant workflow testing.
+  * Dynamically re-renders verified chips with removable tags and automatically
+    recalculates the role readiness match percentage and topological DAG canvas.
+- Git Remote Synchronization:
+  * Committed and pushed all updates to GitHub repository:
+    https://github.com/prasanna-gowd/nexus (branch `main`).
 ================================================================================
