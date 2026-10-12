@@ -340,7 +340,8 @@ async def tutor_chat(request: Request, chat_req: AgentChatRequest):
             target_role=chat_req.target_role,
             verified_skills=chat_req.verified_skills,
             user_message=chat_req.user_message,
-            reset_session=chat_req.reset_session
+            reset_session=chat_req.reset_session,
+            specific_skill=chat_req.specific_skill
         )
         return AgentChatResponse(**result)
     except Exception as e:

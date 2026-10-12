@@ -79,6 +79,7 @@ class AgentChatRequest(BaseModel):
     verified_skills: List[str] = Field(default_factory=list)
     user_message: Optional[str] = None
     reset_session: bool = False
+    specific_skill: Optional[str] = Field(default=None, description="Directly focus Socratic tutoring on a clicked DAG skill")
 
 
 class AgentChatResponse(BaseModel):

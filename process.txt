@@ -297,3 +297,26 @@ Repository: C:\Users\prasa\Desktop\capstone
   * Synchronized survey evaluation, roadmap generation, and diagnostic tests with backend state.
   * 100% test pass rate across 34 unit, integration, and E2E tests (`pytest`).
 ================================================================================
+
+13. DIRECT DAG NODE INTERACTION & FULL CYCLE ROADMAP REACTIVITY
+--------------------------------------------------------------------------------
+- Direct Skill Targeting from Prerequisite Canvas & Step List:
+  * Extended `AgentChatRequest` (`src/api/schemas.py`) and `run_agent_turn` (`src/agents/orchestrator.py`)
+    with `specific_skill` parameter.
+  * Clicking ANY node in the prerequisite DAG canvas or step item in the roadmap directly opens the Socratic
+    Tutoring workspace focused specifically on that technology (e.g. Node.js, React, Docker, SQL).
+  * Reorders active learning queue to target the selected skill without losing global prerequisite relationships.
+
+- Technically Accurate Pedagogical Curricula & Defensible Prerequisite Scoping:
+  * Scoped `compute_learning_trajectory` (`src/engine/dag_scheduler.py`) to prevent cross-stack framework pollution
+    (e.g., Python Backend Developer roadmaps no longer inadvertently pull unrelated HTML/CSS or Express.js nodes).
+  * Added comprehensive question banks, progressive inquiries, scaffolding hints, and evaluation rubrics
+    for Node.js, REST API, and HTML/CSS (`src/agents/nodes.py`).
+  * Prioritized foundational data/SQL skills cleanly on Tier 0.
+
+- Closed-Loop Mastery & Readiness Synchronization:
+  * Submitting a proficient technical answer achieves >= 0.80 mastery on the Cognitive Profiler gauge.
+  * Demonstrating mastery updates the student's `verified_skills`, dynamically advances the DAG milestone,
+    re-calculates role readiness match percentage, and refreshes the longitudinal progress chart.
+  * 100% test pass rate across all 34 unit, integration, and E2E tests (`pytest`).
+================================================================================

@@ -79,7 +79,8 @@ def run_agent_turn(
     target_role: str = "Machine Learning Engineer",
     verified_skills: Optional[list] = None,
     user_message: Optional[str] = None,
-    reset_session: bool = False
+    reset_session: bool = False,
+    specific_skill: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Orchestrates one interactive turn in the multi-agent tutoring loop.
@@ -91,19 +92,20 @@ def run_agent_turn(
         verified_skills: Initial skills known by the student.
         user_message: Student's answer to the previous Socratic question.
         reset_session: Force a fresh learning session.
+        specific_skill: Specific skill directly clicked from the roadmap DAG.
     """
     if verified_skills is None:
         verified_skills = []
 
     # 1. Retrieve or initialize session state
     if reset_session:
-        logger.info(f"Initializing new learning session for {student_id} (Role: {target_role})")
+        logger.info(f"Initializing new learning session for {student_id} (Role: {target_role}, Specific Skill: {specific_skill})")
         state: LearnerState = {
             "student_id": student_id,
             "target_role": target_role,
             "verified_skills": list(verified_skills),
             "active_trajectory": [],
-            "current_skill": "",
+            "current_skill": specific_skill.strip() if specific_skill else "",
             "chat_history": [],
             "mastery_score": 0.0,
             "attempt_count": 0,
@@ -113,6 +115,10 @@ def run_agent_turn(
         }
     elif student_id in SESSION_STORE:
         state = SESSION_STORE[student_id]
+        if specific_skill and specific_skill.strip():
+            state["current_skill"] = specific_skill.strip()
+            state["attempt_count"] = 0
+            state["question_index"] = 0
         # Allow updating verified skills or role if supplied
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
@@ -123,6 +129,10 @@ def run_agent_turn(
         logger.info(f"Restored session for {student_id} from persistent DuckDB storage")
         state = db_session
         SESSION_STORE[student_id] = state
+        if specific_skill and specific_skill.strip():
+            state["current_skill"] = specific_skill.strip()
+            state["attempt_count"] = 0
+            state["question_index"] = 0
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
         for s in verified_skills:
@@ -135,7 +145,7 @@ def run_agent_turn(
             "target_role": target_role,
             "verified_skills": list(verified_skills),
             "active_trajectory": [],
-            "current_skill": "",
+            "current_skill": specific_skill.strip() if specific_skill else "",
             "chat_history": [],
             "mastery_score": 0.0,
             "attempt_count": 0,
@@ -179,10 +189,27 @@ def run_agent_turn(
 
     else:
         eval_score = state.get("mastery_score", 0.0)
-        # Initial invocation or resumption without message -> Roadmap -> Socrates
-        if not state.get("current_skill") or not state.get("chat_history"):
+        # Ensure active trajectory is computed if empty
+        if not state.get("active_trajectory"):
             roadmap_updates = roadmap_agent_node(state)
             state.update(roadmap_updates)
+
+        if specific_skill and specific_skill.strip():
+            state["current_skill"] = specific_skill.strip()
+            state["attempt_count"] = 0
+            state["question_index"] = 0
+            # If the specific skill is in active trajectory, reorder it to the front
+            traj = list(state.get("active_trajectory", []))
+            target_clean = specific_skill.strip().lower()
+            matching = [s for s in traj if s.lower() == target_clean]
+            others = [s for s in traj if s.lower() != target_clean]
+            if matching:
+                state["active_trajectory"] = matching + others
+            elif specific_skill.strip() not in state.get("verified_skills", []):
+                state["active_trajectory"] = [specific_skill.strip()] + others
+
+        # Initial invocation or resumption without message -> Socrates
+        if not state.get("chat_history") or (specific_skill and specific_skill.strip()):
             socrates_updates = socrates_agent_node(state)
             state.update(socrates_updates)
 

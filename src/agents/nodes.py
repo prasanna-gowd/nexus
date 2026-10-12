@@ -258,6 +258,24 @@ SKILL_QUESTION_BANKS = {
         "In JavaScript memory management, how do closures maintain access to outer lexical scope, and how can careless closure retention cause memory leaks in long-running browser sessions?",
         "What is Prototype Inheritance in JavaScript? How does property lookup travel up the prototype chain (`__proto__`), and how did ES6 `class` syntax modernize this?",
         "In browser environments, what is Event Bubbling versus Event Capturing, and how does Event Delegation optimize memory when handling clicks across hundreds of dynamic list items?"
+    ],
+    "node.js": [
+        "In high-concurrency Node.js architectures, how does the libuv threadpool complement the single-threaded V8 event loop for blocking I/O and cryptographic operations?",
+        "When handling high-volume HTTP streams in Node.js, what is 'backpressure', and how does piping streams (`readable.pipe(writable)`) prevent buffer overflow and memory exhaustion?",
+        "In production Node.js microservices, how do Worker Threads differ from the Node.js Cluster module for scaling CPU-intensive processing across multiple CPU cores?",
+        "When designing resilient Node.js services, how do you handle `uncaughtException` and `unhandledRejection` events gracefully without leaving socket connections in indeterminate states?"
+    ],
+    "rest api": [
+        "In enterprise REST API design, what is the architectural difference between idempotent HTTP methods (PUT, DELETE, GET) and non-idempotent methods (POST), and how do idempotency keys prevent duplicate payments or orders?",
+        "When versioning high-scale public REST APIs, what are the trade-offs between URI path versioning (`/v1/users`), query parameters, and custom request headers (`Accept: application/vnd.company.v1+json`)?",
+        "In high-traffic REST services, how do HTTP caching headers (`Cache-Control`, `ETag`, `If-None-Match`) minimize server load and decrease mobile client latency?",
+        "When paginating through datasets with millions of rows in a REST endpoint, why is Keyset/Cursor-based pagination vastly superior to offset-based (`OFFSET 100000 LIMIT 50`) pagination?"
+    ],
+    "html/css": [
+        "In modern web application architecture, how does the browser Critical Rendering Path work (DOM -> CSSOM -> Render Tree -> Layout -> Paint), and how do non-blocking CSS/script techniques optimize First Contentful Paint (FCP)?",
+        "When building responsive, accessible components, how does CSS Grid compare with Flexbox for multi-dimensional layout orchestration, and why should semantic HTML5 elements be used instead of generic `<div>` tags for accessibility (ARIA)?",
+        "In large-scale CSS architecture (BEM, CSS Modules, or Tailwind), how do you prevent specificity collisions and cascading side effects across micro-frontends?",
+        "In high-performance web animations, why should transforms and opacity (`transform: translate3d()`, `opacity`) be preferred over layout properties (`left`, `top`, `height`) to avoid CPU-bound reflows?"
     ]
 }
 
@@ -303,7 +321,10 @@ def _simulate_socratic_response(skill: str, attempt: int, prev_score: float, con
             "devops": f"💡 **Scaffolding Hint for {skill}:** Contrast automated staging versus automated production deployment. In Continuous Delivery, human approval gates the final production push; in Continuous Deployment, every passing pipeline automatically releases to production.",
             "git": f"💡 **Scaffolding Hint for {skill}:** Consider Git's commit graph. `git merge` creates a merge commit preserving parallel branch history, whereas `git rebase` replays your commits linearly onto the tip of the base branch.",
             "typescript": f"💡 **Scaffolding Hint for {skill}:** In a structural type system (duck typing), two types are compatible if they share the same property shapes, regardless of their declared class or interface names.",
-            "javascript": f"💡 **Scaffolding Hint for {skill}:** Microtasks (Promises, `queueMicrotask`) have higher execution priority than Macrotasks (`setTimeout`, `setInterval`). Microtasks run immediately after the current call stack clears, before the browser renders."
+            "javascript": f"💡 **Scaffolding Hint for {skill}:** Microtasks (Promises, `queueMicrotask`) have higher execution priority than Macrotasks (`setTimeout`, `setInterval`). Microtasks run immediately after the current call stack clears, before the browser renders.",
+            "node.js": f"💡 **Scaffolding Hint for {skill}:** Remember that the libuv threadpool manages blocking I/O (like file system calls and DNS lookups) asynchronously so the single-threaded V8 event loop is never blocked.",
+            "rest api": f"💡 **Scaffolding Hint for {skill}:** Focus on idempotency: calling an idempotent operation multiple times produces the identical side-effect on the server as making a single call.",
+            "html/css": f"💡 **Scaffolding Hint for {skill}:** Trace the Critical Rendering Path: the browser constructs DOM and CSSOM trees into a Render Tree before computing Layout geometry and Painting pixels."
         }
         hint_text = hints.get(
             skill_lower,
@@ -445,6 +466,30 @@ def _evaluate_student_rubric(skill: str, response: str) -> (float, str):
         "kubernetes": {
             "advanced": ["readiness", "liveness", "traffic", "endpoints", "restart", "deadlock", "kubelet"],
             "moderate": ["pod", "cluster", "service", "health check"],
+        },
+        "javascript": {
+            "advanced": ["event loop", "microtask", "macrotask", "closure", "prototype", "lexical scope", "delegation"],
+            "moderate": ["callback", "promise", "async", "event", "scope"],
+        },
+        "typescript": {
+            "advanced": ["structural", "discriminated union", "generics", "conditional type", "infer", "type guard"],
+            "moderate": ["interface", "type", "types", "compiler", "safety"],
+        },
+        "git": {
+            "advanced": ["rebase", "bisect", "cherry-pick", "fast-forward", "merge commit", "reflog", "staging area"],
+            "moderate": ["commit", "branch", "merge", "push", "pull", "checkout"],
+        },
+        "node.js": {
+            "advanced": ["libuv", "threadpool", "backpressure", "stream", "worker thread", "cluster", "event loop"],
+            "moderate": ["async", "npm", "server", "express", "process"],
+        },
+        "rest api": {
+            "advanced": ["idempotent", "idempotency", "cursor", "keyset", "etag", "cache-control", "status code"],
+            "moderate": ["endpoint", "http", "get", "post", "header", "json"],
+        },
+        "html/css": {
+            "advanced": ["critical rendering path", "cssom", "reflow", "repaint", "grid", "flexbox", "semantic"],
+            "moderate": ["dom", "layout", "responsive", "style", "selector"],
         },
     }
 

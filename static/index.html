@@ -1135,13 +1135,14 @@
       }
 
       stepList.innerHTML = trajectory.map((step, idx) => `
-        <div class="step-item ${idx === 0 ? 'active' : ''}">
+        <div class="step-item ${idx === 0 ? 'active' : ''}" style="cursor: pointer; transition: transform 0.15s, border-color 0.15s;" onclick="switchTab('tutor'); initTutorSession('${escapeHtml(step.skill_name)}');" title="Click to start tutoring on ${escapeHtml(step.skill_name)}">
           <div class="step-num">${step.step}</div>
           <div class="step-info">
             <div class="step-title">
               ${step.skill_name} 
               <span style="font-size: 0.68rem; color: #a5b4fc; background: rgba(99, 102, 241, 0.15); border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Level ${step.level !== undefined ? step.level : 0}</span>
               ${step.is_target_skill ? '<span style="font-size: 0.68rem; color: #38bdf8; border: 1px solid #0284c7; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Target Role</span>' : '<span style="font-size: 0.68rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Prerequisite</span>'}
+              <span style="font-size: 0.7rem; color: #818cf8; margin-left: auto; float: right;">🎯 Practice →</span>
             </div>
             <div class="step-prereqs">${step.prerequisites && step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill (no prerequisites)'}</div>
           </div>
@@ -1435,8 +1436,24 @@
         if (tooltip) tooltip.style.display = 'none';
       });
 
-      canvas.addEventListener('click', () => {
-        if (dagHoveredNode && dagNodeMap[dagHoveredNode]) {
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        let clickedNode = null;
+        for (const [name, node] of Object.entries(dagNodeMap)) {
+          const dist = Math.hypot(mx - node.x, my - node.y);
+          if (dist <= node.radius + 12) {
+            clickedNode = node;
+            break;
+          }
+        }
+
+        if (clickedNode) {
+          switchTab('tutor');
+          initTutorSession(clickedNode.name);
+        } else if (dagHoveredNode && dagNodeMap[dagHoveredNode]) {
           const node = dagNodeMap[dagHoveredNode];
           switchTab('tutor');
           initTutorSession(node.name);
@@ -1450,9 +1467,13 @@
     }
 
     // Tutor Chat (Phase 5)
-    async function initTutorSession() {
+    async function initTutorSession(targetSkill = null) {
       const role = document.getElementById('target-role-input').value.trim() || 'Machine Learning Engineer';
-      sendChatRequest({ reset_session: true, target_role: role });
+      const payload = { reset_session: true, target_role: role };
+      if (targetSkill && typeof targetSkill === 'string' && targetSkill.trim()) {
+        payload.specific_skill = targetSkill.trim();
+      }
+      sendChatRequest(payload);
     }
 
     async function sendChatMessage() {
@@ -1556,9 +1577,10 @@
 
     function advanceToNextSkill() {
       const activeSkill = document.getElementById('active-skill-badge').textContent.trim();
-      if (activeSkill && activeSkill !== 'None active' && !verifiedSkills.includes(activeSkill)) {
+      if (activeSkill && activeSkill !== 'None active' && activeSkill !== 'All Mastered!' && !verifiedSkills.includes(activeSkill)) {
         verifiedSkills.push(activeSkill);
         renderVerifiedChips();
+        generateRoadmap();
       }
       const chatBox = document.getElementById('chat-messages');
       chatBox.innerHTML += `<div class="message user">I have mastered ${activeSkill}! Let's advance to the next prerequisite in my roadmap.</div>`;

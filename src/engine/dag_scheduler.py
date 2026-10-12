@@ -29,13 +29,11 @@ CURATED_PREREQUISITES: List[Tuple[str, str]] = [
 
     # Backend & Server-Side APIs
     ("Node.js", "Express.js"),
-    ("Node.js", "REST API"),
-    ("Node.js", "Docker"),
     ("Python", "FastAPI"),
     ("Python", "Django"),
     ("Python", "Flask"),
-    ("Python", "REST API"),
     ("FastAPI", "REST API"),
+    ("Node.js", "REST API"),
 
     # Data & Database hierarchies
     ("SQL", "PostgreSQL"),
@@ -149,13 +147,25 @@ class PrerequisiteDAG:
             return ([], []) if return_edges else []
 
         # 2. Gather all missing skills and their necessary prerequisites
+        # If required_skills defines an explicit curriculum/role scope, respect that scope
+        # while including foundational prerequisites (like Git, Linux, SQL)
         all_needed_skills: Set[str] = set()
+        required_lower = {s.strip().lower() for s in required_skills}
+
         for skill in missing_skills:
             all_needed_skills.add(skill)
-            # Also include ancestors if not verified
+            # Pull direct predecessors that belong to required_skills or are direct prerequisites
             ancestors = self.get_prerequisites_for_skill(skill)
             for anc in ancestors:
-                if anc.lower() not in verified_set:
+                if anc.lower() in verified_set:
+                    continue
+                # If required_skills already explicitly defines the scope (len >= 5), only include ancestors that are in required_skills
+                # or have direct relevance, avoiding unrelated language/framework stacks
+                if len(required_skills) >= 5 and anc.lower() not in required_lower:
+                    # Only include essential cross-stack foundations (Git, Linux, SQL, HTML/CSS if web)
+                    if anc in ["Git", "Linux", "SQL"]:
+                        all_needed_skills.add(anc)
+                else:
                     all_needed_skills.add(anc)
 
         # 3. Create subgraph of all needed skills
@@ -180,9 +190,9 @@ class PrerequisiteDAG:
                 levels[s] = lvl_idx
 
         # Pedagogical tie-breaker priority for skills on the same level:
-        # Web & Foundations -> Languages -> Frameworks -> Databases -> APIs -> DevOps
+        # Web & Foundations -> Databases -> Languages -> Frameworks -> APIs -> DevOps
         domain_priority = {
-            "HTML/CSS": 1, "Git": 2, "Linux": 3, "SQL": 4, "Data Structures": 5,
+            "SQL": 1, "HTML/CSS": 2, "Git": 3, "Linux": 4, "Data Structures": 5,
             "JavaScript": 10, "Python": 11, "TypeScript": 12, "Bash": 13,
             "React": 20, "Vue.js": 21, "Angular": 22, "Node.js": 23, "FastAPI": 24, "Django": 25, "Flask": 26,
             "PostgreSQL": 30, "MySQL": 31, "Redis": 32, "Database Design": 33, "Pandas": 34, "NumPy": 35,
