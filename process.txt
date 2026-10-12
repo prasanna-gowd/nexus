@@ -363,3 +363,44 @@ Repository: C:\Users\prasa\Desktop\capstone
   * 100% test pass rate across 40 unit, integration, and E2E tests (`pytest`).
 ================================================================================
 
+15. SKILL ROADMAP & SOCRATIC TUTORING STATE CONSISTENCY & USABILITY AUDIT
+--------------------------------------------------------------------------------
+- Single Authoritative Learner State & Synchronization:
+  * Unified `current_skill`, `active_trajectory`, `verified_skills`, `target_role`, and `mastery_score` across
+    the Skill Roadmap and Socratic Tutoring screens.
+  * In `static/index.html`:
+    - Introduced global `currentSkill` synchronized across `analyzeJobPost`, `generateRoadmap`, `initTutorSession`, and `sendChatRequest`.
+    - Synchronized `#active-skill-badge` and `#tutor-remaining-chips` with the authoritative active milestone.
+    - Updated `drawDAG()` and `renderTrajectorySteps()` to dynamically highlight `currentSkill` with the active aura,
+      `★` milestone badge, and `.active` card styling, reflecting runtime progress rather than static step 1.
+    - DAG canvas click handler now launches tutoring for the clicked milestone (`initTutorSession(clickedNode.name, true)`)
+      and sets `currentSkill` directly.
+- Cognitive Profiler Integrity & Closed-Loop Mastery Progression:
+  * Verified that the Cognitive Profiler updates mastery scores only after evaluating the student's actual response.
+  * Switching to a new target skill resets the pending mastery score to 0.00 until evaluated.
+  * Incorrect responses receive low scores (< 0.80) and trigger targeted remediation without modifying verified skills.
+  * Mastery responses (score >= 0.80) automatically append the mastered skill to `verified_skills`, record the
+    event in DuckDB `learning_events`, regenerate the DAG roadmap, update readiness percentages, and advance `current_skill`
+    to the next pending prerequisite milestone.
+- Session Resumption & Chat History Preservation:
+  * Modified `initTutorSession(targetSkill, reset=false)` to preserve existing chat history by default.
+  * Resetting is now explicit via `resetTutorSession()` or when switching to an alternate skill milestone.
+  * `switchTab('tutor')` automatically checks if an active dialogue exists and resumes without sending `reset_session: true`.
+  * `initApp()` restores the full dialogue history from `s.chat_history` on page load/refresh, rendering prior human
+    and agent messages with complete formatting.
+- Tutoring Screen Usability & Layout Refinement:
+  * Eliminated the awkward nested scrollbar in the left tutoring panel by removing `max-height: 130px; overflow-y: auto;`
+    from `#job-context-box`.
+  * Added `white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.5; font-style: italic;`
+    ensuring company job context snippets wrap naturally within the card container.
+- Verification & Test Execution:
+  * Full pytest test suite: 40/40 tests PASSED in 170.38s (`pytest`).
+  * Live API workflow verification:
+    1. Role switching to Full Stack Developer: 20.0% readiness (2/10 skills verified).
+    2. Tutor initialization on `Node.js`: 0.00 initial mastery score.
+    3. Incorrect answer evaluation: mastery evaluated at 0.20 (score < 0.80, skill not verified).
+    4. Session persistence retrieval: `Node.js` active, 4 chat messages restored from DuckDB.
+    5. Mastery response evaluation: mastery evaluated at 0.90, `Node.js` promoted to verified skills,
+       next skill advanced to `SQL`.
+================================================================================
+

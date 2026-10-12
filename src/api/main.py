@@ -33,6 +33,7 @@ from src.api.schemas import (
 from src.api.db import check_duckdb_health, check_postgres_health, retrieve_semantic_job_context
 from src.engine.dag_scheduler import perform_skill_gap_analysis
 from src.analytics.trends import MarketAnalytics
+from src.nlp.extractor import canonicalize_skill_name
 
 logger = logging.getLogger(__name__)
 
@@ -255,8 +256,9 @@ async def evaluate_survey(request: SurveyEvaluateRequest):
         for skill, answer in request.answers.items():
             ans_clean = answer.lower()
             if "intermediate" in ans_clean or "production" in ans_clean or "level 3" in ans_clean or "level 4" in ans_clean:
-                if skill not in verified_skills:
-                    verified_skills.append(skill)
+                canon = canonicalize_skill_name(skill)
+                if canon and canon not in verified_skills:
+                    verified_skills.append(canon)
 
         # Re-compute skill gap and DAG
         gap_res = perform_skill_gap_analysis(
@@ -378,7 +380,11 @@ async def get_student_session(student_id: str):
         "session_found": True,
         "target_role": state.get("target_role", "Machine Learning Engineer"),
         "verified_skills": state.get("verified_skills", []),
+        "current_skill": state.get("current_skill", ""),
+        "active_trajectory": state.get("active_trajectory", []),
+        "chat_history": state.get("chat_history", []),
         "overall_mastery": state.get("mastery_score", 0.0),
+        "is_completed": state.get("is_completed", False),
         "session": {
             "student_id": state.get("student_id", student_id),
             "target_role": state.get("target_role", "Machine Learning Engineer"),

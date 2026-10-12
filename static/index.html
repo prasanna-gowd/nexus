@@ -753,7 +753,7 @@
 
         <div style="margin-bottom: 1.25rem;">
           <label>Production Job Context</label>
-          <div id="job-context-box" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45; background: #090d16; padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border); max-height: 130px; overflow-y: auto; font-style: italic;">
+          <div id="job-context-box" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; background: #090d16; padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border); white-space: normal; word-break: break-word; overflow-wrap: anywhere; font-style: italic;">
             Context will be retrieved upon first question.
           </div>
         </div>
@@ -935,6 +935,7 @@
 
   <script>
     let verifiedSkills = ['Python'];
+    let currentSkill = '';
     let currentTrajectory = [];
     let currentDagEdges = [];
     let dagHoveredNode = null;
@@ -1055,14 +1056,26 @@
 
     // Switch Tabs
     function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${tabId}'`)) {
+          b.classList.add('active');
+        }
+      });
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('tab-' + tabId).classList.add('active');
+      const targetContent = document.getElementById('tab-' + tabId);
+      if (targetContent) targetContent.classList.add('active');
 
       if (tabId === 'market') loadMarketTrends();
       if (tabId === 'roadmap') drawDAG();
       if (tabId === 'progress') loadStudentProgress();
+      if (tabId === 'tutor') {
+        const chatBox = document.getElementById('chat-messages');
+        if (!chatBox || !chatBox.children || chatBox.children.length === 0) {
+          const target = currentSkill || (currentTrajectory.length > 0 ? currentTrajectory[0].skill_name : null);
+          initTutorSession(target, false);
+        }
+      }
     }
 
     function setRoadmapMode(mode) {
@@ -1118,6 +1131,21 @@
         currentTrajectory = data.ordered_trajectory || [];
         currentDagEdges = data.dag_edges || [];
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' pending steps';
+
+        // Reconcile currentSkill with new trajectory
+        const isCurrentStillPending = currentSkill && currentTrajectory.some(s => s.skill_name.toLowerCase() === currentSkill.toLowerCase());
+        if (!isCurrentStillPending) {
+          currentSkill = currentTrajectory.length > 0 ? currentTrajectory[0].skill_name : '';
+        }
+        const activeBadge = document.getElementById('active-skill-badge');
+        if (activeBadge) {
+          activeBadge.textContent = currentSkill || (currentTrajectory.length === 0 ? 'All Mastered!' : 'None active');
+        }
+        const remChips = document.getElementById('tutor-remaining-chips');
+        if (remChips) {
+          remChips.innerHTML = currentTrajectory.map(s => `<span class="chip ${s.skill_name.toLowerCase() === currentSkill.toLowerCase() ? 'active' : ''}">${escapeHtml(s.skill_name)}</span>`).join('');
+        }
+
         renderTrajectorySteps(currentTrajectory);
         drawDAG(currentTrajectory, currentDagEdges);
       } catch (e) {
@@ -1135,20 +1163,22 @@
         return;
       }
 
-      stepList.innerHTML = trajectory.map((step, idx) => `
-        <div class="step-item ${idx === 0 ? 'active' : ''}" style="cursor: pointer; transition: transform 0.15s, border-color 0.15s;" onclick="switchTab('tutor'); initTutorSession('${escapeHtml(step.skill_name)}');" title="Click to start tutoring on ${escapeHtml(step.skill_name)}">
+      stepList.innerHTML = trajectory.map((step, idx) => {
+        const isCurrent = currentSkill ? (step.skill_name.toLowerCase() === currentSkill.toLowerCase()) : (idx === 0);
+        return `
+        <div class="step-item ${isCurrent ? 'active' : ''}" style="cursor: pointer; transition: transform 0.15s, border-color 0.15s;" onclick="switchTab('tutor'); initTutorSession('${escapeHtml(step.skill_name)}', true);" title="Click to start tutoring on ${escapeHtml(step.skill_name)}">
           <div class="step-num">${step.step}</div>
           <div class="step-info">
             <div class="step-title">
-              ${step.skill_name} 
+              ${escapeHtml(step.skill_name)} 
               <span style="font-size: 0.68rem; color: #a5b4fc; background: rgba(99, 102, 241, 0.15); border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Level ${step.level !== undefined ? step.level : 0}</span>
               ${step.is_target_skill ? '<span style="font-size: 0.68rem; color: #38bdf8; border: 1px solid #0284c7; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Target Role</span>' : '<span style="font-size: 0.68rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Prerequisite</span>'}
               <span style="font-size: 0.7rem; color: #818cf8; margin-left: auto; float: right;">🎯 Practice →</span>
             </div>
-            <div class="step-prereqs">${step.prerequisites && step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill (no prerequisites)'}</div>
+            <div class="step-prereqs">${step.prerequisites && step.prerequisites.length > 0 ? 'Requires: ' + escapeHtml(step.prerequisites.join(', ')) : 'Direct foundational skill (no prerequisites)'}</div>
           </div>
         </div>
-      `).join('');
+      `;}).join('');
 
       document.getElementById('start-tutor-btn').style.display = 'inline-flex';
     }
@@ -1176,6 +1206,21 @@
         currentTrajectory = data.ordered_trajectory || [];
         currentDagEdges = data.dag_edges || [];
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' pending steps';
+
+        // Reconcile currentSkill with new trajectory
+        const isCurrentStillPending = currentSkill && currentTrajectory.some(s => s.skill_name.toLowerCase() === currentSkill.toLowerCase());
+        if (!isCurrentStillPending) {
+          currentSkill = currentTrajectory.length > 0 ? currentTrajectory[0].skill_name : '';
+        }
+        const activeBadge = document.getElementById('active-skill-badge');
+        if (activeBadge) {
+          activeBadge.textContent = currentSkill || (currentTrajectory.length === 0 ? 'All Mastered!' : 'None active');
+        }
+        const remChips = document.getElementById('tutor-remaining-chips');
+        if (remChips) {
+          remChips.innerHTML = currentTrajectory.map(s => `<span class="chip ${s.skill_name.toLowerCase() === currentSkill.toLowerCase() ? 'active' : ''}">${escapeHtml(s.skill_name)}</span>`).join('');
+        }
+
         renderTrajectorySteps(currentTrajectory);
         drawDAG(currentTrajectory, currentDagEdges);
       } catch (e) {
@@ -1246,9 +1291,9 @@
 
         colNodes.forEach((node, rowIdx) => {
           const y = padTop + (rowIdx + 0.5) * ((H - padTop - padBottom) / numInCol);
-          const isFirst = (node.step === 1);
+          const isCurrent = currentSkill ? (node.skill_name.toLowerCase() === currentSkill.toLowerCase()) : (node.step === 1);
           const isVerified = verifiedSkills.map(s => s.toLowerCase()).includes(node.skill_name.toLowerCase());
-          const radius = isFirst ? 18 : 15;
+          const radius = isCurrent ? 18 : 15;
 
           dagNodeMap[node.skill_name] = {
             name: node.skill_name,
@@ -1259,7 +1304,7 @@
             level: lvl,
             is_target_skill: node.is_target_skill,
             isVerified,
-            isFirst,
+            isCurrent,
             prerequisites: node.prerequisites || []
           };
         });
@@ -1341,11 +1386,11 @@
       Object.values(dagNodeMap).forEach(n => {
         const isHovered = dagHoveredNode === n.name;
 
-        // Glowing outer aura ring for active next milestone or hovered
-        if (n.isFirst || isHovered) {
+        // Glowing outer aura ring for active current milestone or hovered
+        if (n.isCurrent || isHovered) {
           ctx.beginPath();
           ctx.arc(n.x, n.y, n.radius + 6, 0, Math.PI * 2);
-          ctx.fillStyle = n.isFirst ? 'rgba(99, 102, 241, 0.28)' : 'rgba(56, 189, 248, 0.25)';
+          ctx.fillStyle = n.isCurrent ? 'rgba(99, 102, 241, 0.28)' : 'rgba(56, 189, 248, 0.25)';
           ctx.fill();
         }
 
@@ -1355,7 +1400,7 @@
         if (n.isVerified) {
           ctx.fillStyle = '#059669';
           ctx.strokeStyle = '#34d399';
-        } else if (n.isFirst) {
+        } else if (n.isCurrent) {
           ctx.fillStyle = '#4f46e5';
           ctx.strokeStyle = '#a5b4fc';
         } else if (n.is_target_skill) {
@@ -1376,7 +1421,7 @@
         ctx.textBaseline = 'middle';
         if (n.isVerified) {
           ctx.fillText('✓', n.x, n.y);
-        } else if (n.isFirst) {
+        } else if (n.isCurrent) {
           ctx.fillText('★', n.x, n.y);
         } else {
           ctx.fillText(n.step, n.x, n.y);
@@ -1384,8 +1429,8 @@
 
         // Skill Label below node
         const isLight = document.body.classList.contains('light-theme');
-        const textColor = n.isFirst ? '#818cf8' : (n.is_target_skill ? (isLight ? '#0369a1' : '#38bdf8') : (isLight ? '#334155' : '#cbd5e1'));
-        ctx.font = n.isFirst ? 'bold 11px Plus Jakarta Sans, sans-serif' : '600 10px Plus Jakarta Sans, sans-serif';
+        const textColor = n.isCurrent ? '#818cf8' : (n.is_target_skill ? (isLight ? '#0369a1' : '#38bdf8') : (isLight ? '#334155' : '#cbd5e1'));
+        ctx.font = n.isCurrent ? 'bold 11px Plus Jakarta Sans, sans-serif' : '600 10px Plus Jakarta Sans, sans-serif';
         ctx.fillStyle = textColor;
         ctx.textBaseline = 'top';
         ctx.fillText(n.name, n.x, n.y + n.radius + 5);
@@ -1424,7 +1469,7 @@
             tooltip.style.left = Math.min(rect.width - 200, Math.max(10, hit.x + 20)) + 'px';
             tooltip.style.top = Math.max(10, hit.y - 30) + 'px';
             const prereqsText = hit.prerequisites.length > 0 ? hit.prerequisites.join(', ') : 'None (Foundational)';
-            const statusText = hit.isVerified ? '✅ Mastered' : (hit.isFirst ? '★ Active Milestone' : '⏳ Pending');
+            const statusText = hit.isVerified ? '✅ Mastered' : (hit.isCurrent ? '★ Active Milestone' : '⏳ Pending');
             tooltip.innerHTML = `
               <div style="font-weight: 800; color: #f1f5f9; margin-bottom: 2px;">${escapeHtml(hit.name)}</div>
               <div style="color: var(--text-muted);">Generation Level ${hit.level} • ${statusText}</div>
@@ -1464,27 +1509,28 @@
 
         if (clickedNode) {
           switchTab('tutor');
-          initTutorSession(clickedNode.name);
+          initTutorSession(clickedNode.name, true);
         } else if (dagHoveredNode && dagNodeMap[dagHoveredNode]) {
           const node = dagNodeMap[dagHoveredNode];
           switchTab('tutor');
-          initTutorSession(node.name);
+          initTutorSession(node.name, true);
         }
       });
     }
 
     function startTutoringFromRoadmap() {
-      document.querySelectorAll('.tab-btn')[1].click();
-      const firstSkill = (currentTrajectory && currentTrajectory.length > 0) ? currentTrajectory[0].skill_name : null;
-      initTutorSession(firstSkill);
+      switchTab('tutor');
+      const target = currentSkill || ((currentTrajectory && currentTrajectory.length > 0) ? currentTrajectory[0].skill_name : null);
+      initTutorSession(target, false);
     }
 
     // Tutor Chat (Phase 5)
-    async function initTutorSession(targetSkill = null) {
+    async function initTutorSession(targetSkill = null, reset = false) {
       const role = document.getElementById('target-role-input').value.trim() || 'Machine Learning Engineer';
-      const payload = { reset_session: true, target_role: role };
+      const payload = { reset_session: reset, target_role: role };
       if (targetSkill && typeof targetSkill === 'string' && targetSkill.trim()) {
         payload.specific_skill = targetSkill.trim();
+        currentSkill = targetSkill.trim();
       }
       sendChatRequest(payload);
     }
@@ -1523,19 +1569,28 @@
         });
         const data = await res.json();
 
+        // Update currentSkill authoritative state
+        if (data.current_skill) {
+          currentSkill = data.current_skill;
+        }
+
         // Profiler gauge update
-        const score = data.mastery_score;
+        const score = data.mastery_score !== undefined ? data.mastery_score : 0.0;
         document.getElementById('profiler-score').textContent = score.toFixed(2);
         document.getElementById('profiler-fill').style.width = (score * 100) + '%';
         document.getElementById('active-skill-badge').textContent = data.current_skill || 'All Mastered!';
 
         // Verified skills
-        verifiedSkills = data.verified_skills;
-        renderVerifiedChips();
+        if (data.verified_skills) {
+          verifiedSkills = data.verified_skills;
+          renderVerifiedChips();
+        }
 
         // Remaining trajectory
-        const remChips = document.getElementById('tutor-remaining-chips');
-        remChips.innerHTML = data.active_trajectory.map(s => `<span class="chip">${s}</span>`).join('');
+        if (data.active_trajectory) {
+          const remChips = document.getElementById('tutor-remaining-chips');
+          remChips.innerHTML = data.active_trajectory.map(s => `<span class="chip ${s.toLowerCase() === currentSkill.toLowerCase() ? 'active' : ''}">${escapeHtml(s)}</span>`).join('');
+        }
 
         // Extract Question tag if present in agent message
         const qMatch = data.agent_message ? data.agent_message.match(/Question #(\d+)/i) : null;
@@ -1553,6 +1608,10 @@
         // Check if mastery reached (>= 0.8) and advance
         if (data.mastery_score >= 0.8) {
           generateRoadmap();
+        } else {
+          // Re-render roadmap trajectory steps & DAG active aura with currentSkill
+          renderTrajectorySteps(currentTrajectory);
+          drawDAG(currentTrajectory, currentDagEdges);
         }
 
         // Job context snippet
@@ -1717,7 +1776,7 @@
 
     function resetTutorSession() {
       document.getElementById('chat-messages').innerHTML = '';
-      initTutorSession();
+      initTutorSession(currentSkill || null, true);
     }
 
     // Market Trends (Phase 3)
@@ -2123,12 +2182,29 @@
             if (Array.isArray(restoredSkills) && restoredSkills.length > 0) {
               verifiedSkills = restoredSkills;
             }
-            const masteryVal = sess.mastery_score !== undefined ? sess.mastery_score : s.overall_mastery;
-            if (masteryVal !== undefined && masteryVal !== null) {
-              const prof = document.getElementById('profiler-score');
-              const fill = document.getElementById('profiler-fill');
-              if (prof) prof.textContent = Number(masteryVal).toFixed(2);
-              if (fill) fill.style.width = Math.round(Number(masteryVal) * 100) + '%';
+            const restoredSkill = sess.current_skill || s.current_skill;
+            if (restoredSkill) {
+              currentSkill = restoredSkill;
+              const activeBadge = document.getElementById('active-skill-badge');
+              if (activeBadge) activeBadge.textContent = currentSkill;
+            }
+            const chatHistory = sess.chat_history || s.chat_history;
+            if (Array.isArray(chatHistory) && chatHistory.length > 0) {
+              const chatBox = document.getElementById('chat-messages');
+              if (chatBox) {
+                chatBox.innerHTML = '';
+                chatHistory.forEach(msg => {
+                  const role = msg.role || (msg.type === 'human' ? 'user' : 'agent');
+                  const isUser = (role === 'user' || role === 'human');
+                  const content = msg.content || '';
+                  if (isUser) {
+                    chatBox.innerHTML += `<div class="message user">${escapeHtml(content)}</div>`;
+                  } else {
+                    chatBox.innerHTML += `<div class="message agent">${formatAgentText(content)}</div>`;
+                  }
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+              }
             }
           }
         }

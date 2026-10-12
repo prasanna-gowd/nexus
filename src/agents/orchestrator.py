@@ -126,9 +126,12 @@ def run_agent_turn(
     elif student_id in SESSION_STORE:
         state = SESSION_STORE[student_id]
         if specific_skill and specific_skill.strip():
-            state["current_skill"] = specific_skill.strip()
-            state["attempt_count"] = 0
-            state["question_index"] = 0
+            canon_spec = specific_skill.strip()
+            if state.get("current_skill") != canon_spec:
+                state["current_skill"] = canon_spec
+                state["mastery_score"] = 0.0
+                state["attempt_count"] = 0
+                state["question_index"] = 0
         # Allow updating verified skills or role if supplied
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
@@ -142,9 +145,12 @@ def run_agent_turn(
         state = db_session
         SESSION_STORE[student_id] = state
         if specific_skill and specific_skill.strip():
-            state["current_skill"] = specific_skill.strip()
-            state["attempt_count"] = 0
-            state["question_index"] = 0
+            canon_spec = specific_skill.strip()
+            if state.get("current_skill") != canon_spec:
+                state["current_skill"] = canon_spec
+                state["mastery_score"] = 0.0
+                state["attempt_count"] = 0
+                state["question_index"] = 0
         if target_role and target_role != state.get("target_role"):
             state["target_role"] = target_role
         cur_v_lower = {v.lower() for v in state.get("verified_skills", [])}
@@ -202,28 +208,36 @@ def run_agent_turn(
             state.update(socrates_updates)
 
     else:
-        eval_score = state.get("mastery_score", 0.0)
+        # No user answer was submitted (session initiation, resumption, or navigation)
+        skill_changed = False
+        if specific_skill and specific_skill.strip():
+            canon_spec = specific_skill.strip()
+            if state.get("current_skill") != canon_spec:
+                state["current_skill"] = canon_spec
+                state["mastery_score"] = 0.0
+                state["attempt_count"] = 0
+                state["question_index"] = 0
+                skill_changed = True
+
+            # Reorder specific skill to front of active trajectory if present
+            traj = list(state.get("active_trajectory", []))
+            target_clean = canon_spec.lower()
+            matching = [s for s in traj if s.lower() == target_clean]
+            others = [s for s in traj if s.lower() != target_clean]
+            if matching:
+                state["active_trajectory"] = matching + others
+            elif canon_spec not in state.get("verified_skills", []):
+                state["active_trajectory"] = [canon_spec] + others
+
         # Ensure active trajectory is computed if empty
         if not state.get("active_trajectory"):
             roadmap_updates = roadmap_agent_node(state)
             state.update(roadmap_updates)
 
-        if specific_skill and specific_skill.strip():
-            state["current_skill"] = specific_skill.strip()
-            state["attempt_count"] = 0
-            state["question_index"] = 0
-            # If the specific skill is in active trajectory, reorder it to the front
-            traj = list(state.get("active_trajectory", []))
-            target_clean = specific_skill.strip().lower()
-            matching = [s for s in traj if s.lower() == target_clean]
-            others = [s for s in traj if s.lower() != target_clean]
-            if matching:
-                state["active_trajectory"] = matching + others
-            elif specific_skill.strip() not in state.get("verified_skills", []):
-                state["active_trajectory"] = [specific_skill.strip()] + others
+        eval_score = state.get("mastery_score", 0.0)
 
-        # Initial invocation or resumption without message -> Socrates
-        if not state.get("chat_history") or (specific_skill and specific_skill.strip()):
+        # Ask question if chat history is empty or if learner explicitly switched skills
+        if not state.get("chat_history") or skill_changed:
             socrates_updates = socrates_agent_node(state)
             state.update(socrates_updates)
 
