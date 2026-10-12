@@ -17,5 +17,6 @@ class LearnerState(TypedDict):
     chat_history: List[Dict[str, str]] # [{'role': 'user'|'agent', 'content': str}]
     mastery_score: float              # 0.0 to 1.0 confidence from profiler
     attempt_count: int                # Number of attempts for current skill
+    question_index: int               # Index of current question for skill
     pending_response: bool            # True if waiting for student response
     is_completed: bool                # True if all skills in trajectory are mastered

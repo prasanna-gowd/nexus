@@ -106,6 +106,7 @@ def run_agent_turn(
             "chat_history": [],
             "mastery_score": 0.0,
             "attempt_count": 0,
+            "question_index": 0,
             "pending_response": False,
             "is_completed": False
         }

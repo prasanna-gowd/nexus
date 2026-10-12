@@ -182,4 +182,37 @@ Repository: C:\Users\prasa\Desktop\capstone
   * Application launched via `run_app.py` on http://127.0.0.1:8000.
   * GET /api/v1/health returned HTTP 200 (healthy, DuckDB connected).
   * GET / returned HTTP 200 (29,282 bytes dashboard HTML/JS/CSS served).
+
+9. REAL-TIME JOB POST ANALYSIS, DIAGNOSTIC SURVEY & DYNAMIC SOCRATIC QUESTIONING
+--------------------------------------------------------------------------------
+- Problem Addressed:
+  * Previously, tutoring asked single fixed questions for known skills.
+  * User requested ability to paste real job post requirements, compare skills, take a
+    diagnostic survey to establish baseline competencies, dynamically generate the
+    learning map, and engage in progressive, multi-question Socratic tutoring that adapts.
+- Implemented Real-Time Job Posting Skill Extractor (`POST /api/v1/roadmaps/analyze-job-post`):
+  * Parses unstructured job postings via `clean_description` and `extract_skills`.
+  * Extracts all required technical skills in real time.
+  * Evaluates student's verified skills against extracted job skills and computes match %.
+  * Generates tailored NetworkX topological DAG trajectory.
+- Implemented Diagnostic Skill Assessment Survey (`POST /api/v1/survey/generate` & `evaluate`):
+  * Generates diagnostic competency questions across role prerequisite skills.
+  * Evaluates self-assessed levels (Levels 3 & 4 verified; Levels 1 & 2 flagged for learning).
+  * Automatically builds personalized prerequisite learning map from survey results.
+- Implemented Dynamic Non-Fixed Progressive Question Engine:
+  * Expanded `_simulate_socratic_response` into a rich multi-tiered question repository
+    covering Python, Docker, SQL, PostgreSQL, React, Kubernetes, Machine Learning,
+    PyTorch, AWS, FastAPI, Pandas, NumPy, DevOps, Git, TypeScript, and JavaScript.
+  * Each skill features 4 distinct progressive questions:
+    1. Architecture & foundational mechanics.
+    2. Error resilience, concurrency & failure modes.
+    3. Production performance, indexing & optimization.
+    4. Modern system design & security integration.
+  * StateGraph tracks `question_index` per skill—never repeats fixed questions!
+  * Adaptive Knowledge Tracing: Remediation hints on score < 0.8; automated mastery
+    advancement to next DAG milestone on score >= 0.8.
+- Frontend UI Enhancements (`static/index.html`):
+  * Added 'Paste Job Post' mode to Tab 1 with real-time NLP skill extraction.
+  * Added 'Take Diagnostic Skill Survey' modal with interactive assessment levels.
+  * Added question tracking, 'Next Question', and 'Next Skill' controls to Tab 2.
 ================================================================================

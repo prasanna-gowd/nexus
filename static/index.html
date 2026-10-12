@@ -245,6 +245,40 @@
     }
     .btn-secondary:hover { background: #26334d; }
 
+    /* Sub Nav Modes */
+    .sub-nav { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .sub-nav-btn {
+      flex: 1; padding: 0.55rem; background: #090d16; border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .sub-nav-btn.active {
+      background: rgba(99, 102, 241, 0.2); color: #818cf8; border-color: var(--primary-light);
+    }
+
+    /* Survey Modal */
+    .survey-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none;
+      align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem;
+      backdrop-filter: blur(4px);
+    }
+    .survey-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      width: 100%; max-width: 680px; max-height: 85vh; overflow-y: auto; padding: 2rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7); display: flex; flex-direction: column;
+    }
+    .survey-q {
+      background: #090d16; border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.1rem; margin-bottom: 1rem;
+    }
+    .survey-opt {
+      display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem;
+      border-radius: 6px; cursor: pointer; transition: background 0.15s; font-size: 0.85rem;
+      color: var(--text-main);
+    }
+    .survey-opt:hover { background: #172033; }
+    .survey-opt input { width: auto; margin: 0; }
+
     /* Chips */
     .chips-container {
       display: flex;
@@ -460,19 +494,43 @@
     <div id="tab-roadmap" class="tab-content active grid-roadmap">
       <!-- Left Panel -->
       <div class="card">
-        <h2 class="card-title">Target Role & Current Skills</h2>
+        <h2 class="card-title">Target Role & Job Post Analysis</h2>
 
-        <label>Quick Select Role Target</label>
-        <div class="role-grid">
-          <button class="role-btn" onclick="selectRole('Machine Learning Engineer')">🤖 ML Engineer</button>
-          <button class="role-btn" onclick="selectRole('Full Stack Developer')">💻 Full Stack Dev</button>
-          <button class="role-btn" onclick="selectRole('DevOps Engineer')">☁️ DevOps Engineer</button>
-          <button class="role-btn" onclick="selectRole('Backend Developer')">⚙️ Backend Dev</button>
+        <!-- Sub-nav mode toggle -->
+        <div class="sub-nav">
+          <button id="btn-mode-role" class="sub-nav-btn active" onclick="setRoadmapMode('role')">🎯 Role Preset</button>
+          <button id="btn-mode-post" class="sub-nav-btn" onclick="setRoadmapMode('post')">📄 Paste Job Post</button>
         </div>
 
-        <div style="margin-bottom: 1.25rem;">
-          <label>Target Career Role</label>
-          <input type="text" id="target-role-input" value="Machine Learning Engineer" placeholder="e.g. Data Scientist">
+        <!-- Mode 1: Role Target -->
+        <div id="mode-role-container">
+          <label>Quick Select Role Target</label>
+          <div class="role-grid">
+            <button class="role-btn" onclick="selectRole('Machine Learning Engineer')">🤖 ML Engineer</button>
+            <button class="role-btn" onclick="selectRole('Full Stack Developer')">💻 Full Stack Dev</button>
+            <button class="role-btn" onclick="selectRole('DevOps Engineer')">☁️ DevOps Engineer</button>
+            <button class="role-btn" onclick="selectRole('Backend Developer')">⚙️ Backend Dev</button>
+          </div>
+
+          <div style="margin-bottom: 1.25rem;">
+            <label>Target Career Role</label>
+            <input type="text" id="target-role-input" value="Machine Learning Engineer" placeholder="e.g. Data Scientist">
+          </div>
+        </div>
+
+        <!-- Mode 2: Paste Job Post -->
+        <div id="mode-post-container" style="display: none; margin-bottom: 1.25rem;">
+          <div style="margin-bottom: 0.75rem;">
+            <label>Job Posting Title (Optional)</label>
+            <input type="text" id="job-title-input" value="Senior Backend & ML Engineer" placeholder="e.g. Senior Platform Engineer">
+          </div>
+          <div style="margin-bottom: 0.75rem;">
+            <label>Paste Raw Job Description / Requirements</label>
+            <textarea id="job-desc-input" rows="4" placeholder="Paste hiring requirements or job description text here (e.g. from LinkedIn, Remotive, Hacker News)..."></textarea>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%;" onclick="analyzeJobPost()">
+            🔍 Extract Skills from Job Description & Compare
+          </button>
         </div>
 
         <div>
@@ -501,6 +559,11 @@
             <span id="required-count-label">0 Required Skills</span>
           </div>
         </div>
+
+        <!-- Diagnostic Skill Survey Trigger -->
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 0.75rem; border-color: rgba(99, 102, 241, 0.4); color: #818cf8;" onclick="openSurvey()">
+          📋 Take Diagnostic Skill Survey
+        </button>
       </div>
 
       <!-- Right Panel: Prerequisite DAG Visualizer & Trajectory -->
@@ -546,11 +609,23 @@
           </div>
         </div>
 
-        <div style="margin-bottom: 1.25rem;">
-          <label>Current Learning Target</label>
+        <div style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label style="margin: 0;">Current Learning Target</label>
+            <span id="question-num-tag" style="font-size: 0.72rem; color: #818cf8; background: rgba(99, 102, 241, 0.15); padding: 2px 7px; border-radius: 10px; font-weight: 700;">Question #1</span>
+          </div>
           <div id="active-skill-badge" style="font-weight: 800; font-size: 1.15rem; color: var(--accent); padding: 0.6rem 0.85rem; background: #090d16; border-radius: 8px; border: 1px solid var(--border);">
             None active
           </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
+          <button class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.5rem;" onclick="requestNextQuestion()">
+            🎯 Next Question
+          </button>
+          <button class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.5rem;" onclick="advanceToNextSkill()">
+            ⏭️ Next Skill
+          </button>
         </div>
 
         <div style="margin-bottom: 1.25rem;">
@@ -654,50 +729,88 @@
       if (tabId === 'roadmap') drawDAG();
     }
 
+    function setRoadmapMode(mode) {
+      const btnRole = document.getElementById('btn-mode-role');
+      const btnPost = document.getElementById('btn-mode-post');
+      const roleBox = document.getElementById('mode-role-container');
+      const postBox = document.getElementById('mode-post-container');
+      if (mode === 'role') {
+        btnRole.classList.add('active');
+        btnPost.classList.remove('active');
+        roleBox.style.display = 'block';
+        postBox.style.display = 'none';
+      } else {
+        btnPost.classList.add('active');
+        btnRole.classList.remove('active');
+        roleBox.style.display = 'none';
+        postBox.style.display = 'block';
+      }
+    }
+
     function selectRole(role) {
       document.getElementById('target-role-input').value = role;
       generateRoadmap();
     }
 
-    // Health check
-    async function checkHealth() {
+    async function analyzeJobPost() {
+      const desc = document.getElementById('job-desc-input').value.trim();
+      const title = document.getElementById('job-title-input').value.trim() || 'Target Tech Job';
+      if (!desc) {
+        alert('Please paste a job description or requirements text first.');
+        return;
+      }
+      const stepList = document.getElementById('step-list');
+      stepList.innerHTML = '<div style="text-align: center; padding: 2rem;">Extracting technical skills and computing prerequisite DAG...</div>';
+
       try {
-        const res = await fetch('/api/v1/health');
+        const res = await fetch('/api/v1/roadmaps/analyze-job-post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_title: title,
+            job_description: desc,
+            student_skills: verifiedSkills
+          })
+        });
         const data = await res.json();
-        const dot = document.getElementById('health-dot');
-        const text = document.getElementById('health-text');
-        if (data.status === 'healthy') {
-          dot.style.background = '#10b981';
-          text.textContent = 'API Live (' + (data.postgres_connected ? 'PostgreSQL' : 'DuckDB') + ')';
-        }
+        document.getElementById('target-role-input').value = data.job_title;
+        document.getElementById('match-pct-text').textContent = data.match_percentage + '%';
+        document.getElementById('match-bar-fill').style.width = data.match_percentage + '%';
+        document.getElementById('matched-count-label').textContent = `${data.matched_skills.length} Matched Skills`;
+        document.getElementById('required-count-label').textContent = `${data.total_required} Total Required`;
+
+        currentTrajectory = data.ordered_trajectory;
+        document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
+        renderTrajectorySteps(currentTrajectory);
+        drawDAG(currentTrajectory);
       } catch (e) {
-        document.getElementById('health-dot').style.background = '#ef4444';
-        document.getElementById('health-text').textContent = 'API Offline';
+        stepList.innerHTML = '<div style="color: #ef4444; padding: 1rem;">Failed to analyze job posting: ' + e.message + '</div>';
       }
     }
 
-    // Verified skills chips
-    function addSkill() {
-      const input = document.getElementById('skill-input');
-      const val = input.value.trim();
-      if (!val) return;
-      if (!verifiedSkills.map(s => s.toLowerCase()).includes(val.toLowerCase())) {
-        verifiedSkills.push(val);
-        renderVerifiedChips();
+    function renderTrajectorySteps(trajectory) {
+      const stepList = document.getElementById('step-list');
+      if (!trajectory || trajectory.length === 0) {
+        stepList.innerHTML = '<div style="color: #34d399; text-align: center; padding: 2rem;">🎉 Outstanding! All required skills for this role are already verified!</div>';
+        document.getElementById('start-tutor-btn').style.display = 'none';
+        drawDAG([]);
+        return;
       }
-      input.value = '';
-    }
 
-    function removeSkill(skill) {
-      verifiedSkills = verifiedSkills.filter(s => s.toLowerCase() !== skill.toLowerCase());
-      renderVerifiedChips();
-    }
-
-    function renderVerifiedChips() {
-      const container = document.getElementById('verified-skills-chips');
-      container.innerHTML = verifiedSkills.map(s => `
-        <span class="chip verified">${s} <span class="chip-remove" onclick="removeSkill('${s}')">✕</span></span>
+      stepList.innerHTML = trajectory.map((step, idx) => `
+        <div class="step-item ${idx === 0 ? 'active' : ''}">
+          <div class="step-num">${step.step}</div>
+          <div class="step-info">
+            <div class="step-title">
+              ${step.skill_name} 
+              ${step.is_target_skill ? '<span style="font-size: 0.7rem; color: #818cf8; border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Target Role</span>' : '<span style="font-size: 0.7rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Prerequisite</span>'}
+            </div>
+            <div class="step-prereqs">${step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill'}</div>
+          </div>
+        </div>
       `).join('');
+
+      document.getElementById('start-tutor-btn').style.display = 'inline-flex';
     }
 
     // Generate Roadmap
@@ -722,28 +835,7 @@
 
         currentTrajectory = data.ordered_trajectory;
         document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
-
-        if (currentTrajectory.length === 0) {
-          stepList.innerHTML = '<div style="color: #34d399; text-align: center; padding: 2rem;">🎉 Outstanding! All required skills for this role are already verified!</div>';
-          document.getElementById('start-tutor-btn').style.display = 'none';
-          drawDAG([]);
-          return;
-        }
-
-        stepList.innerHTML = currentTrajectory.map((step, idx) => `
-          <div class="step-item ${idx === 0 ? 'active' : ''}">
-            <div class="step-num">${step.step}</div>
-            <div class="step-info">
-              <div class="step-title">
-                ${step.skill_name} 
-                ${step.is_target_skill ? '<span style="font-size: 0.7rem; color: #818cf8; border: 1px solid #4f46e5; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Target Role</span>' : '<span style="font-size: 0.7rem; color: #fbbf24; border: 1px solid #d97706; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Prerequisite</span>'}
-              </div>
-              <div class="step-prereqs">${step.prerequisites.length > 0 ? 'Requires: ' + step.prerequisites.join(', ') : 'Direct foundational skill'}</div>
-            </div>
-          </div>
-        `).join('');
-
-        document.getElementById('start-tutor-btn').style.display = 'inline-flex';
+        renderTrajectorySteps(currentTrajectory);
         drawDAG(currentTrajectory);
       } catch (e) {
         stepList.innerHTML = '<div style="color: #ef4444; padding: 1rem;">Failed to calculate roadmap: ' + e.message + '</div>';
@@ -886,11 +978,22 @@
         const remChips = document.getElementById('tutor-remaining-chips');
         remChips.innerHTML = data.active_trajectory.map(s => `<span class="chip">${s}</span>`).join('');
 
+        // Extract Question tag if present in agent message
+        const qMatch = data.agent_message ? data.agent_message.match(/Question #(\d+)/i) : null;
+        if (qMatch) {
+          document.getElementById('question-num-tag').textContent = 'Question #' + qMatch[1];
+        }
+
         // Agent response message
         const chatBox = document.getElementById('chat-messages');
         if (data.agent_message) {
           chatBox.innerHTML += `<div class="message agent">${formatAgentText(data.agent_message)}</div>`;
           chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Check if mastery reached (>= 0.8) and advance
+        if (data.mastery_score >= 0.8) {
+          generateRoadmap();
         }
 
         // Job context snippet
@@ -907,6 +1010,124 @@
       } finally {
         sendBtn.disabled = false;
         sendBtn.textContent = 'Send';
+      }
+    }
+
+    function requestNextQuestion() {
+      const activeSkill = document.getElementById('active-skill-badge').textContent.trim();
+      if (!activeSkill || activeSkill === 'None active' || activeSkill === 'All Mastered!') {
+        alert('Please start a tutoring session first.');
+        return;
+      }
+      const chatBox = document.getElementById('chat-messages');
+      chatBox.innerHTML += `<div class="message user">Please give me a different challenge question for <strong>${activeSkill}</strong>.</div>`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+      sendChatRequest({ user_message: `Please give me a different technical question for ${activeSkill}.` });
+    }
+
+    function advanceToNextSkill() {
+      const activeSkill = document.getElementById('active-skill-badge').textContent.trim();
+      if (activeSkill && activeSkill !== 'None active' && !verifiedSkills.includes(activeSkill)) {
+        verifiedSkills.push(activeSkill);
+        renderVerifiedChips();
+      }
+      const chatBox = document.getElementById('chat-messages');
+      chatBox.innerHTML += `<div class="message user">I have mastered ${activeSkill}! Let's advance to the next prerequisite in my roadmap.</div>`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+      sendChatRequest({ user_message: `Advancing to the next prerequisite skill.` });
+    }
+
+    // Diagnostic Survey (Phase 2 & 4 Bridge)
+    let currentSurveyQuestions = [];
+
+    async function openSurvey() {
+      const modal = document.getElementById('survey-modal');
+      const list = document.getElementById('survey-questions-list');
+      modal.style.display = 'flex';
+      list.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Generating diagnostic survey for your target role...</div>';
+
+      const role = document.getElementById('target-role-input').value.trim() || 'Machine Learning Engineer';
+      try {
+        const res = await fetch('/api/v1/survey/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_role: role })
+        });
+        const data = await res.json();
+        currentSurveyQuestions = data.questions;
+
+        if (currentSurveyQuestions.length === 0) {
+          list.innerHTML = '<div style="text-align: center; color: var(--text-muted);">No diagnostic questions needed for this role.</div>';
+          return;
+        }
+
+        list.innerHTML = currentSurveyQuestions.map((q, qIdx) => `
+          <div class="survey-q">
+            <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-main);">
+              ${qIdx + 1}. ${q.question}
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+              ${q.options.map((opt, optIdx) => `
+                <label class="survey-opt">
+                  <input type="radio" name="survey_q_${qIdx}" value="${escapeHtml(opt)}" ${optIdx === 0 ? 'checked' : ''}>
+                  <span>${opt}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        list.innerHTML = '<div style="color: #ef4444; padding: 1rem;">Failed to load survey: ' + e.message + '</div>';
+      }
+    }
+
+    function closeSurvey() {
+      document.getElementById('survey-modal').style.display = 'none';
+    }
+
+    async function submitSurvey() {
+      const role = document.getElementById('target-role-input').value.trim() || 'Machine Learning Engineer';
+      const answers = {};
+      currentSurveyQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="survey_q_${idx}"]:checked`);
+        if (checked) answers[q.skill_name] = checked.value;
+      });
+
+      const submitBtn = document.getElementById('submit-survey-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Evaluating Answers...';
+
+      try {
+        const res = await fetch('/api/v1/survey/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            student_id: studentId,
+            target_role: role,
+            answers: answers
+          })
+        });
+        const data = await res.json();
+        verifiedSkills = data.verified_skills;
+        renderVerifiedChips();
+
+        document.getElementById('match-pct-text').textContent = data.match_percentage + '%';
+        document.getElementById('match-bar-fill').style.width = data.match_percentage + '%';
+        document.getElementById('matched-count-label').textContent = `${data.verified_skills.length} Verified Skills`;
+        document.getElementById('required-count-label').textContent = `${data.ordered_trajectory.length} Remaining Objectives`;
+
+        currentTrajectory = data.ordered_trajectory;
+        document.getElementById('trajectory-count').textContent = currentTrajectory.length + ' steps';
+        renderTrajectorySteps(currentTrajectory);
+        drawDAG(currentTrajectory);
+
+        closeSurvey();
+        alert(`🎉 Survey Evaluated!\n${data.initial_feedback}\n\nYour customized prerequisite map has been constructed!`);
+      } catch (e) {
+        alert('Failed to evaluate survey: ' + e.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🚀 Submit Survey & Build My Learning Map';
       }
     }
 
@@ -1022,5 +1243,33 @@
     renderVerifiedChips();
     generateRoadmap();
   </script>
+
+  <!-- Diagnostic Skill Survey Modal -->
+  <div id="survey-modal" class="survey-modal">
+    <div class="survey-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋</span> Diagnostic Skill Assessment Survey
+          </h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Rate your hands-on production competency for the required skills. NEXUS will build your tailored learning map.
+          </p>
+        </div>
+        <button class="btn btn-secondary" onclick="closeSurvey()" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">✕ Close</button>
+      </div>
+      
+      <div id="survey-questions-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading diagnostic questions...</div>
+      </div>
+
+      <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 1rem;">
+        <button class="btn btn-secondary" onclick="closeSurvey()">Cancel</button>
+        <button class="btn" id="submit-survey-btn" onclick="submitSurvey()">
+          🚀 Submit Survey & Build My Learning Map
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

@@ -88,3 +88,53 @@ class AgentChatResponse(BaseModel):
     active_trajectory: List[str]
     is_completed: bool = False
     chat_history: List[Dict[str, str]]
+
+
+# --- Job Post Real-Time Skill Extractor & Matching ---
+class JobPostAnalyzeRequest(BaseModel):
+    job_title: Optional[str] = Field(default="Target Tech Role")
+    job_description: str = Field(..., description="Raw text of the job posting")
+    student_skills: List[str] = Field(default_factory=list, description="Verified student skills")
+
+
+class JobPostAnalyzeResponse(BaseModel):
+    job_title: str
+    extracted_skills: List[str]
+    match_percentage: float
+    matched_skills: List[str]
+    missing_skills: List[str]
+    total_required: int
+    ordered_trajectory: List[TrajectoryStep]
+
+
+# --- Diagnostic Skill Survey ---
+class SurveyQuestion(BaseModel):
+    skill_name: str
+    question: str
+    options: List[str]
+
+
+class SurveyGenerateRequest(BaseModel):
+    target_role: str = Field(default="Machine Learning Engineer")
+    skills: Optional[List[str]] = None
+
+
+class SurveyGenerateResponse(BaseModel):
+    target_role: str
+    questions: List[SurveyQuestion]
+
+
+class SurveyEvaluateRequest(BaseModel):
+    student_id: str = Field(default="STU-001")
+    target_role: str = Field(default="Machine Learning Engineer")
+    answers: Dict[str, str] = Field(..., description="Mapping of skill_name to selected proficiency level")
+
+
+class SurveyEvaluateResponse(BaseModel):
+    student_id: str
+    target_role: str
+    verified_skills: List[str]
+    match_percentage: float
+    missing_skills: List[str]
+    ordered_trajectory: List[TrajectoryStep]
+    initial_feedback: str

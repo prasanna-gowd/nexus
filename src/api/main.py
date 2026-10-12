@@ -19,6 +19,13 @@ from src.api.schemas import (
     ContextRetrieveResponse,
     AgentChatRequest,
     AgentChatResponse,
+    JobPostAnalyzeRequest,
+    JobPostAnalyzeResponse,
+    SurveyQuestion,
+    SurveyGenerateRequest,
+    SurveyGenerateResponse,
+    SurveyEvaluateRequest,
+    SurveyEvaluateResponse,
 )
 from src.api.db import check_duckdb_health, check_postgres_health, retrieve_semantic_job_context
 from src.engine.dag_scheduler import perform_skill_gap_analysis
@@ -92,6 +99,162 @@ async def analyze_gap(request: GapAnalysisRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Gap analysis calculation failed: {str(e)}"
+        )
+
+
+@app.post("/api/v1/roadmaps/analyze-job-post", response_model=JobPostAnalyzeResponse, tags=["Skill-Gap Engine"])
+async def analyze_job_post(request: JobPostAnalyzeRequest):
+    """
+    Parses raw job posting text in real time, extracts technical skills,
+    compares against verified student skills, and generates the prerequisite DAG.
+    """
+    try:
+        from src.nlp.cleaner import clean_description
+        from src.nlp.extractor import extract_skills
+
+        cleaned = clean_description(request.job_description)
+        extracted_entities = extract_skills(cleaned, use_gliner=False)
+        extracted_names = []
+        for e in extracted_entities:
+            s_name = e.get("skill", "").strip()
+            if s_name and s_name not in extracted_names:
+                extracted_names.append(s_name)
+
+        if not extracted_names:
+            extracted_names = ["Python", "SQL", "Git", "Docker"]
+
+        result = perform_skill_gap_analysis(
+            target_role=request.job_title or "Target Job Posting",
+            student_skills=request.student_skills,
+            role_skills_override=extracted_names
+        )
+
+        return JobPostAnalyzeResponse(
+            job_title=request.job_title or "Target Job Posting",
+            extracted_skills=extracted_names,
+            match_percentage=result["match_percentage"],
+            matched_skills=result["matched_skills"],
+            missing_skills=result["missing_skills"],
+            total_required=result["total_required"],
+            ordered_trajectory=result["ordered_trajectory"]
+        )
+    except Exception as e:
+        logger.error(f"Error analyzing job posting: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze job posting: {str(e)}"
+        )
+
+
+@app.post("/api/v1/survey/generate", response_model=SurveyGenerateResponse, tags=["Diagnostic Survey"])
+async def generate_survey(request: SurveyGenerateRequest):
+    """
+    Generates a diagnostic skill survey assessing baseline competencies
+    for the target role's key prerequisite technologies.
+    """
+    try:
+        from src.analytics.trends import MarketAnalytics
+        analytics = MarketAnalytics()
+        
+        target_skills = request.skills or []
+        if not target_skills:
+            role_demand = analytics.get_skills_by_role(request.target_role, limit=8)
+            if role_demand:
+                target_skills = [item["skill_name"] for item in role_demand]
+            else:
+                role_defaults = {
+                    "machine learning": ["Python", "SQL", "Pandas", "NumPy", "scikit-learn", "PyTorch", "Docker"],
+                    "data engineer": ["Python", "SQL", "PostgreSQL", "Docker", "Apache Kafka", "Linux"],
+                    "frontend": ["HTML/CSS", "JavaScript", "TypeScript", "React", "Next.js", "Git"],
+                    "backend": ["Python", "PostgreSQL", "Docker", "FastAPI", "Redis", "Linux"],
+                    "full stack": ["JavaScript", "Python", "React", "PostgreSQL", "Docker", "Git"],
+                    "devops": ["Linux", "Git", "Docker", "Kubernetes", "AWS", "CI/CD"],
+                }
+                matched_key = next((k for k in role_defaults if k in request.target_role.lower()), None)
+                target_skills = role_defaults.get(matched_key, ["Python", "SQL", "Docker", "Git", "React"])
+
+        survey_questions = []
+        options = [
+            "Level 1: No exposure / Just beginning",
+            "Level 2: Basic conceptual familiarity (syntax/tutorials)",
+            "Level 3: Intermediate hands-on project experience",
+            "Level 4: Production mastery (architectural trade-offs & debugging)"
+        ]
+
+        for skill in target_skills[:8]:
+            survey_questions.append(SurveyQuestion(
+                skill_name=skill,
+                question=f"How would you rate your hands-on production engineering competence in **{skill}**?",
+                options=options
+            ))
+
+        return SurveyGenerateResponse(
+            target_role=request.target_role,
+            questions=survey_questions
+        )
+    except Exception as e:
+        logger.error(f"Error generating survey: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Survey generation failed: {str(e)}"
+        )
+
+
+@app.post("/api/v1/survey/evaluate", response_model=SurveyEvaluateResponse, tags=["Diagnostic Survey"])
+async def evaluate_survey(request: SurveyEvaluateRequest):
+    """
+    Evaluates the student's diagnostic survey answers, establishes baseline
+    verified competencies, and constructs the personalized learning map.
+    """
+    try:
+        from src.agents.orchestrator import SESSION_STORE, LearnerState
+
+        verified_skills = []
+        for skill, answer in request.answers.items():
+            ans_clean = answer.lower()
+            if "intermediate" in ans_clean or "production" in ans_clean or "level 3" in ans_clean or "level 4" in ans_clean:
+                if skill not in verified_skills:
+                    verified_skills.append(skill)
+
+        # Re-compute skill gap and DAG
+        gap_res = perform_skill_gap_analysis(
+            target_role=request.target_role,
+            student_skills=verified_skills
+        )
+
+        # Update session store
+        state: LearnerState = {
+            "student_id": request.student_id,
+            "target_role": request.target_role,
+            "verified_skills": verified_skills,
+            "active_trajectory": [step["skill_name"] for step in gap_res["ordered_trajectory"]],
+            "current_skill": gap_res["ordered_trajectory"][0]["skill_name"] if gap_res["ordered_trajectory"] else "",
+            "chat_history": [{
+                "role": "agent",
+                "content": f"📋 **Diagnostic Survey Completed!**\n\nBased on your assessment, you have verified proficiency in: {', '.join(verified_skills) if verified_skills else 'None yet'}.\n\nYour personalized prerequisite DAG has been mapped out. Your next learning milestone is **{gap_res['ordered_trajectory'][0]['skill_name'] if gap_res['ordered_trajectory'] else 'None'}**."
+            }],
+            "mastery_score": 0.0,
+            "attempt_count": 0,
+            "question_index": 0,
+            "pending_response": False,
+            "is_completed": len(gap_res["ordered_trajectory"]) == 0
+        }
+        SESSION_STORE[request.student_id] = state
+
+        return SurveyEvaluateResponse(
+            student_id=request.student_id,
+            target_role=request.target_role,
+            verified_skills=verified_skills,
+            match_percentage=gap_res["match_percentage"],
+            missing_skills=gap_res["missing_skills"],
+            ordered_trajectory=gap_res["ordered_trajectory"],
+            initial_feedback=f"Identified {len(verified_skills)} verified skills and {len(gap_res['missing_skills'])} prerequisite learning objectives."
+        )
+    except Exception as e:
+        logger.error(f"Error evaluating survey: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Survey evaluation failed: {str(e)}"
         )
 
 
