@@ -534,10 +534,22 @@
         </div>
 
         <div>
-          <label>Verified Skills You Already Master</label>
+          <label>Verified Skills You Already Master (Add single or comma-separated)</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="text" id="skill-input" placeholder="Type a skill..." onkeydown="if(event.key==='Enter') addSkill()">
+            <input type="text" id="skill-input" placeholder="e.g. Python, Docker, SQL, React..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); addSkill(); }">
             <button class="btn btn-secondary" onclick="addSkill()">Add</button>
+            <button class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;" onclick="clearAllSkills()" title="Clear all verified skills">Clear</button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); align-self: center;">Quick Add:</span>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('Python')">+ Python</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('Docker')">+ Docker</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('SQL')">+ SQL</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('PostgreSQL')">+ PostgreSQL</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('React')">+ React</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('AWS')">+ AWS</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('Git')">+ Git</button>
+            <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.72rem; border-radius: 10px;" onclick="addQuickSkill('FastAPI')">+ FastAPI</button>
           </div>
           <div class="chips-container" id="verified-skills-chips"></div>
         </div>
@@ -717,6 +729,117 @@
     let verifiedSkills = ['Python'];
     let currentTrajectory = [];
     let studentId = 'STU-' + Math.floor(1000 + Math.random() * 9000);
+
+    // System Health Status Check
+    async function checkHealth() {
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        const dot = document.getElementById('health-dot');
+        const txt = document.getElementById('health-text');
+        if (data.status === 'healthy') {
+          if (dot) dot.style.background = '#10b981';
+          if (txt) txt.textContent = 'API Live (' + (data.active_database || 'DuckDB') + ')';
+        } else {
+          if (dot) dot.style.background = '#ef4444';
+          if (txt) txt.textContent = 'Degraded';
+        }
+      } catch (e) {
+        const dot = document.getElementById('health-dot');
+        const txt = document.getElementById('health-text');
+        if (dot) dot.style.background = '#ef4444';
+        if (txt) txt.textContent = 'Offline';
+      }
+    }
+
+    // Add Skill (Single or Comma/Semicolon-Separated List)
+    function addQuickSkill(skill) {
+      addSkill(skill);
+    }
+
+    function addSkill(directSkill) {
+      let tokens = [];
+      if (directSkill && typeof directSkill === 'string') {
+        tokens = [directSkill];
+      } else {
+        const input = document.getElementById('skill-input');
+        if (!input) return;
+        const val = input.value.trim();
+        if (!val) return;
+        // Support comma, semicolon, or newline delimited skill lists
+        tokens = val.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+        input.value = '';
+      }
+
+      let changed = false;
+      const lowerExisting = verifiedSkills.map(s => s.toLowerCase());
+
+      tokens.forEach(skill => {
+        const cleanSkill = skill.trim();
+        if (cleanSkill && !lowerExisting.includes(cleanSkill.toLowerCase())) {
+          verifiedSkills.push(cleanSkill);
+          lowerExisting.push(cleanSkill.toLowerCase());
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        renderVerifiedChips();
+        // Dynamically recalculate roadmap
+        const postBox = document.getElementById('mode-post-container');
+        if (postBox && postBox.style.display !== 'none') {
+          const desc = document.getElementById('job-desc-input');
+          if (desc && desc.value.trim()) {
+            analyzeJobPost();
+            return;
+          }
+        }
+        generateRoadmap();
+      }
+    }
+
+    function removeSkill(skill) {
+      verifiedSkills = verifiedSkills.filter(s => s.toLowerCase() !== skill.toLowerCase());
+      renderVerifiedChips();
+      
+      const postBox = document.getElementById('mode-post-container');
+      if (postBox && postBox.style.display !== 'none') {
+        const desc = document.getElementById('job-desc-input');
+        if (desc && desc.value.trim()) {
+          analyzeJobPost();
+          return;
+        }
+      }
+      generateRoadmap();
+    }
+
+    function clearAllSkills() {
+      verifiedSkills = [];
+      renderVerifiedChips();
+      generateRoadmap();
+    }
+
+    function renderVerifiedChips() {
+      const container = document.getElementById('verified-skills-chips');
+      if (!container) return;
+      if (!verifiedSkills || verifiedSkills.length === 0) {
+        container.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No verified skills added yet. Add skills you already know above.</span>';
+        return;
+      }
+      container.innerHTML = '';
+      verifiedSkills.forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'chip verified';
+        chip.textContent = s + ' ';
+        const rem = document.createElement('span');
+        rem.className = 'chip-remove';
+        rem.textContent = '✕';
+        rem.title = 'Remove ' + s;
+        rem.onclick = () => removeSkill(s);
+        chip.appendChild(rem);
+        container.appendChild(chip);
+      });
+    }
 
     // Switch Tabs
     function switchTab(tabId) {
